@@ -172,6 +172,18 @@ impl<S: Sim> Grid<S> {
         &mut self.cells[..]
     }
 
+    /// Get the Grid's width.
+    #[inline]
+    pub fn get_width(&self) -> usize {
+        self.width
+    }
+
+    /// Get the Grid's height.
+    #[inline]
+    pub fn get_height(&self) -> usize {
+        self.height
+    }
+
     /// Get the Grid's size.
     #[inline]
     pub fn size(&self) -> usize {
