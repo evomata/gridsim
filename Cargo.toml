@@ -2,5 +2,9 @@
 name = "gridsim"
 version = "0.1.0"
 authors = ["Geordon Worley <vadixidav@gmail.com>"]
+description = "A library for running simulations on grids"
+license = "MIT"
+documentation = "https://docs.rs/gridsim/"
+repository = "https://github.com/vadixidav/gridsim"
 
 [dependencies]
