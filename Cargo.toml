@@ -6,3 +6,6 @@ license = "MIT"
 name = "gridsim"
 repository = "https://github.com/vadixidav/gridsim"
 version = "0.1.2"
+
+[dependencies]
+rayon = "1.0.1"

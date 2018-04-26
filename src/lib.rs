@@ -10,6 +10,10 @@
 //! In its current early state, it will be used for 2d square grids only. The structure will be relatively
 //! similar to the final form, but include none of the above features except for the simulation part.
 
+extern crate rayon;
+
+use rayon::prelude::*;
+
 /// Defines a simulation for simple things like cellular automata.
 pub trait Rule {
     /// The type of cells on the grid
@@ -167,6 +171,16 @@ impl<S: Sim> Grid<S> {
         self.update();
     }
 
+    /// Run the Grid for one cycle and parallelize the simulation.
+    pub fn cycle_par(&mut self)
+    where
+        S::Cell: Sync + Send,
+        S::Diff: Sync + Send,
+    {
+        self.step_par();
+        self.update_par();
+    }
+
     fn step(&mut self) {
         self.diffs = {
             let cs = |i| &self.cells[i % self.size()];
@@ -195,10 +209,58 @@ impl<S: Sim> Grid<S> {
         };
     }
 
+    fn step_par(&mut self)
+    where
+        S::Cell: Sync,
+        S::Diff: Sync + Send,
+    {
+        self.diffs = {
+            let cs = |i| &self.cells[i % self.size()];
+            (0..self.size())
+                .into_par_iter()
+                .map(|i| {
+                    [
+                        [
+                            cs(self.size() + i - 1 - self.width),
+                            cs(self.size() + i - self.width),
+                            cs(self.size() + i + 1 - self.width),
+                        ],
+                        [
+                            cs(self.size() + i - 1),
+                            cs(self.size() + i),
+                            cs(self.size() + i + 1),
+                        ],
+                        [
+                            cs(self.size() + i - 1 + self.width),
+                            cs(self.size() + i + self.width),
+                            cs(self.size() + i + 1 + self.width),
+                        ],
+                    ]
+                })
+                .map(S::step)
+                .collect()
+        };
+    }
+
     fn update(&mut self) {
         for (cell, diff) in self.cells.iter_mut().zip(self.diffs.drain(..)) {
             S::update(cell, diff);
         }
+    }
+
+    fn update_par(&mut self)
+    where
+        S::Cell: Sync + Send,
+        S::Diff: Sync + Send,
+    {
+        let mut diffs = Default::default();
+        std::mem::swap(&mut diffs, &mut self.diffs);
+        self.cells[..]
+            .par_iter_mut()
+            .zip(diffs.into_par_iter())
+            .for_each(|(cell, diff)| {
+                S::update(cell, diff);
+            });
     }
 
     /// Get the Grid's Cell slice.
@@ -262,6 +324,18 @@ mod tests {
         let mut grid = Grid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (0, n)));
 
         grid.cycle();
+
+        assert_eq!(
+            grid.get_cells(),
+            Grid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (n, 0))).get_cells()
+        )
+    }
+
+    #[test]
+    fn gol_blinker_par() {
+        let mut grid = Grid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (0, n)));
+
+        grid.cycle_par();
 
         assert_eq!(
             grid.get_cells(),
