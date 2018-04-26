@@ -13,7 +13,7 @@
 /// Defines a simulation for simple things like cellular automata.
 pub trait Rule {
     /// The type of cells on the grid
-    type Cell;
+    type Cell: Clone;
 
     /// This defines a rule for how cells in a 3x3 space transform into a new Cell in the center position
     /// of the new board.
@@ -40,7 +40,6 @@ pub trait Sim {
 impl<T> Sim for T
 where
     T: Rule,
-    T::Cell: Clone,
 {
     type Cell = T::Cell;
     type Diff = T::Cell;
@@ -63,6 +62,7 @@ where
 /// Represents the state of the simulation.
 ///
 /// This is not as efficient for Rule and is optimized for Sim.
+#[derive(Clone, Debug)]
 pub struct Grid<S: Sim> {
     cells: Vec<S::Cell>,
     diffs: Vec<S::Diff>,
@@ -118,6 +118,47 @@ impl<S: Sim> Grid<S> {
             width: width,
             height: height,
         }
+    }
+
+    /// Make a grid by evaluating each centered signed coordinate to a cell with a closure.
+    pub fn new_coord_map<F>(width: usize, height: usize, mut coord_map: F) -> Grid<S>
+    where
+        F: FnMut(isize, isize) -> S::Cell,
+    {
+        Self::new_iter(
+            width,
+            height,
+            (0..height)
+                .flat_map(|y| (0..width).map(move |x| (x, y)))
+                .map(move |(x, y)| {
+                    coord_map(
+                        x as isize - width as isize / 2,
+                        y as isize - height as isize / 2,
+                    )
+                }),
+        )
+    }
+
+    /// Make a grid using a collection of centered signed coordinates with associated cells.
+    pub fn new_coords<I>(width: usize, height: usize, coords: I) -> Grid<S>
+    where
+        I: IntoIterator<Item = ((isize, isize), S::Cell)>,
+        S::Cell: Default,
+    {
+        use std::collections::HashMap;
+        let coords: &mut HashMap<(isize, isize), S::Cell> = &mut coords.into_iter().collect();
+        Self::new_coord_map(width, height, |x, y| {
+            coords.remove(&(x, y)).unwrap_or_default()
+        })
+    }
+
+    /// Make a grid using a collection of centered signed coordinates that indicate true cells.
+    pub fn new_true_coords<I>(width: usize, height: usize, coords: I) -> Grid<S>
+    where
+        I: IntoIterator<Item = (isize, isize)>,
+        S: Sim<Cell = bool>,
+    {
+        Self::new_coords(width, height, coords.into_iter().map(|c| (c, true)))
     }
 
     /// Run the Grid for one cycle.
@@ -192,6 +233,7 @@ impl<S: Sim> Grid<S> {
 }
 
 /// Conway's Game of Life
+#[derive(Debug)]
 pub enum GOL {}
 
 impl Rule for GOL {
@@ -217,25 +259,13 @@ mod tests {
 
     #[test]
     fn gol_blinker() {
-        let mut grid = Grid::<GOL>::new_iter(
-            5,
-            5,
-            vec![
-                false, false, false, false, false, false, false, true, false, false, false, false,
-                true, false, false, false, false, true, false, false, false, false, false, false,
-                false,
-            ],
-        );
+        let mut grid = Grid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (0, n)));
 
         grid.cycle();
 
         assert_eq!(
             grid.get_cells(),
-            &vec![
-                false, false, false, false, false, false, false, false, false, false, false, true,
-                true, true, false, false, false, false, false, false, false, false, false, false,
-                false,
-            ][..]
+            Grid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (n, 0))).get_cells()
         )
     }
 }

@@ -1,10 +1,8 @@
 [package]
-name = "gridsim"
-version = "0.1.1"
 authors = ["Geordon Worley <vadixidav@gmail.com>"]
 description = "A library for running simulations on grids"
-license = "MIT"
 documentation = "https://docs.rs/gridsim/"
+license = "MIT"
+name = "gridsim"
 repository = "https://github.com/vadixidav/gridsim"
-
-[dependencies]
+version = "0.1.1"
