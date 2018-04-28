@@ -11,6 +11,11 @@
 //! similar to the final form, but include none of the above features except for the simulation part.
 
 extern crate rayon;
+#[macro_use]
+extern crate enum_iterator_derive;
+
+pub mod moore;
+pub mod neumann;
 
 use rayon::prelude::*;
 
