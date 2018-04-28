@@ -20,8 +20,6 @@ pub mod neumann;
 
 pub use neighborhood::*;
 
-use rayon::prelude::*;
-
 /// Defines a simulation for simple things like cellular automata.
 pub trait Rule {
     /// The type of cells on the grid
@@ -61,20 +59,20 @@ pub trait Sim {
 ///
 /// This is not as efficient for Rule and is optimized for Sim.
 #[derive(Clone, Debug)]
-pub struct Grid<S: Sim> {
+pub struct SquareGrid<S: Sim> {
     cells: Vec<S::Cell>,
-    diffs: Vec<S::Diff>,
+    diffs: Vec<(S::Diff, S::MoveNeighbors)>,
     width: usize,
     height: usize,
 }
 
-impl<S: Sim> Grid<S> {
+impl<S: Sim> SquareGrid<S> {
     /// Make a new grid using the Cell's Default impl.
-    pub fn new(width: usize, height: usize) -> Grid<S>
+    pub fn new(width: usize, height: usize) -> SquareGrid<S>
     where
         S::Cell: Default,
     {
-        Grid {
+        SquareGrid {
             cells: (0..)
                 .take(width * height)
                 .map(|_| S::Cell::default())
@@ -86,11 +84,11 @@ impl<S: Sim> Grid<S> {
     }
 
     /// Make a new grid by cloning a default Cell.
-    pub fn new_default(width: usize, height: usize, default: S::Cell) -> Grid<S>
+    pub fn new_default(width: usize, height: usize, default: S::Cell) -> SquareGrid<S>
     where
         S::Cell: Clone,
     {
-        Grid {
+        SquareGrid {
             cells: ::std::iter::repeat(default).take(width * height).collect(),
             diffs: Vec::new(),
             width: width,
@@ -99,7 +97,7 @@ impl<S: Sim> Grid<S> {
     }
 
     /// Make a new grid directly from an initial iter.
-    pub fn new_iter<I>(width: usize, height: usize, iter: I) -> Grid<S>
+    pub fn new_iter<I>(width: usize, height: usize, iter: I) -> SquareGrid<S>
     where
         I: IntoIterator<Item = S::Cell>,
     {
@@ -110,7 +108,7 @@ impl<S: Sim> Grid<S> {
             width * height,
             "gridsim::Grid::new_iter: not enough cells provided in iter"
         );
-        Grid {
+        SquareGrid {
             cells: cells,
             diffs: Vec::new(),
             width: width,
@@ -119,7 +117,7 @@ impl<S: Sim> Grid<S> {
     }
 
     /// Make a grid by evaluating each centered signed coordinate to a cell with a closure.
-    pub fn new_coord_map<F>(width: usize, height: usize, mut coord_map: F) -> Grid<S>
+    pub fn new_coord_map<F>(width: usize, height: usize, mut coord_map: F) -> SquareGrid<S>
     where
         F: FnMut(isize, isize) -> S::Cell,
     {
@@ -138,7 +136,7 @@ impl<S: Sim> Grid<S> {
     }
 
     /// Make a grid using a collection of centered signed coordinates with associated cells.
-    pub fn new_coords<I>(width: usize, height: usize, coords: I) -> Grid<S>
+    pub fn new_coords<I>(width: usize, height: usize, coords: I) -> SquareGrid<S>
     where
         I: IntoIterator<Item = ((isize, isize), S::Cell)>,
         S::Cell: Default,
@@ -151,7 +149,7 @@ impl<S: Sim> Grid<S> {
     }
 
     /// Make a grid using a collection of centered signed coordinates that indicate true cells.
-    pub fn new_true_coords<I>(width: usize, height: usize, coords: I) -> Grid<S>
+    pub fn new_true_coords<I>(width: usize, height: usize, coords: I) -> SquareGrid<S>
     where
         I: IntoIterator<Item = (isize, isize)>,
         S: Sim<Cell = bool>,
@@ -159,103 +157,11 @@ impl<S: Sim> Grid<S> {
         Self::new_coords(width, height, coords.into_iter().map(|c| (c, true)))
     }
 
-    // /// Run the Grid for one cycle.
-    // pub fn cycle(&mut self) {
-    //     self.step();
-    //     self.update();
-    // }
-
-    // /// Run the Grid for one cycle and parallelize the simulation.
-    // pub fn cycle_par(&mut self)
-    // where
-    //     S::Cell: Sync + Send,
-    //     S::Diff: Sync + Send,
-    // {
-    //     self.step_par();
-    //     self.update_par();
-    // }
-
-    // fn step(&mut self) {
-    //     self.diffs = {
-    //         let cs = |i| &self.cells[i % self.size()];
-    //         (0..self.size())
-    //             .map(|i| {
-    //                 [
-    //                     [
-    //                         cs(self.size() + i - 1 - self.width),
-    //                         cs(self.size() + i - self.width),
-    //                         cs(self.size() + i + 1 - self.width),
-    //                     ],
-    //                     [
-    //                         cs(self.size() + i - 1),
-    //                         cs(self.size() + i),
-    //                         cs(self.size() + i + 1),
-    //                     ],
-    //                     [
-    //                         cs(self.size() + i - 1 + self.width),
-    //                         cs(self.size() + i + self.width),
-    //                         cs(self.size() + i + 1 + self.width),
-    //                     ],
-    //                 ]
-    //             })
-    //             .map(S::step)
-    //             .collect()
-    //     };
-    // }
-
-    // fn step_par(&mut self)
-    // where
-    //     S::Cell: Sync,
-    //     S::Diff: Sync + Send,
-    // {
-    //     self.diffs = {
-    //         let cs = |i| &self.cells[i % self.size()];
-    //         (0..self.size())
-    //             .into_par_iter()
-    //             .map(|i| {
-    //                 [
-    //                     [
-    //                         cs(self.size() + i - 1 - self.width),
-    //                         cs(self.size() + i - self.width),
-    //                         cs(self.size() + i + 1 - self.width),
-    //                     ],
-    //                     [
-    //                         cs(self.size() + i - 1),
-    //                         cs(self.size() + i),
-    //                         cs(self.size() + i + 1),
-    //                     ],
-    //                     [
-    //                         cs(self.size() + i - 1 + self.width),
-    //                         cs(self.size() + i + self.width),
-    //                         cs(self.size() + i + 1 + self.width),
-    //                     ],
-    //                 ]
-    //             })
-    //             .map(S::step)
-    //             .collect()
-    //     };
-    // }
-
-    // fn update(&mut self) {
-    //     for (cell, diff) in self.cells.iter_mut().zip(self.diffs.drain(..)) {
-    //         S::update(cell, diff);
-    //     }
-    // }
-
-    // fn update_par(&mut self)
-    // where
-    //     S::Cell: Sync + Send,
-    //     S::Diff: Sync + Send,
-    // {
-    //     let mut diffs = Default::default();
-    //     std::mem::swap(&mut diffs, &mut self.diffs);
-    //     self.cells[..]
-    //         .par_iter_mut()
-    //         .zip(diffs.into_par_iter())
-    //         .for_each(|(cell, diff)| {
-    //             S::update(cell, diff);
-    //         });
-    // }
+    /// Get a &Cell by wrapped index.
+    #[inline]
+    pub fn get_cell(&self, i: usize) -> &S::Cell {
+        &self.cells[i % self.size()]
+    }
 
     /// Get the Grid's Cell slice.
     #[inline]
