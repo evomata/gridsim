@@ -15,18 +15,22 @@ extern crate rayon;
 extern crate enum_iterator_derive;
 
 pub mod moore;
+mod neighborhood;
 pub mod neumann;
+
+pub use neighborhood::*;
 
 use rayon::prelude::*;
 
 /// Defines a simulation for simple things like cellular automata.
 pub trait Rule {
     /// The type of cells on the grid
-    type Cell: Clone;
+    type Cell;
+    /// The neighborhood of the rule
+    type Neighbors;
 
-    /// This defines a rule for how cells in a 3x3 space transform into a new Cell in the center position
-    /// of the new board.
-    fn rule([[Self::Cell; 3]; 3]) -> Self::Cell;
+    /// This defines a rule for how a cell and its neighbors transform into a new cell.
+    fn rule(Self::Cell, neighbors: Self::Neighbors) -> Self::Cell;
 }
 
 /// Defines a simulation for complicated things that have too much state to abandon on the next cycle.
@@ -36,36 +40,21 @@ pub trait Rule {
 pub trait Sim {
     /// The type of cells on the grid
     type Cell;
-    /// Represents all information necessary to modify a cell in the previous grid to produce the version in the next.
+    /// Represents all information necessary to modify a cell in the previous grid to produce the version in the next
     type Diff;
+    /// Data that moves between cells
+    type Move;
 
-    /// Performs one step of the simulation by producing a grid of diffs that can be used to change the cells to
-    /// their next state.
-    fn step([[&Self::Cell; 3]; 3]) -> Self::Diff;
-    /// Updates a cell with a diff.
-    fn update(&mut Self::Cell, Self::Diff);
-}
+    /// Neighborhood of cells.
+    type Neighbors;
+    /// Nighborhood of moving data
+    type MoveNeighbors;
 
-impl<T> Sim for T
-where
-    T: Rule,
-{
-    type Cell = T::Cell;
-    type Diff = T::Cell;
+    /// Performs one step of the simulation.
+    fn step(&Self::Cell, neighbors: Self::Neighbors) -> (Self::Diff, Self::MoveNeighbors);
 
-    #[inline]
-    fn step(old: [[&Self::Cell; 3]; 3]) -> Self::Diff {
-        Self::rule([
-            [old[0][0].clone(), old[0][1].clone(), old[0][2].clone()],
-            [old[1][0].clone(), old[1][1].clone(), old[1][2].clone()],
-            [old[2][0].clone(), old[2][1].clone(), old[2][2].clone()],
-        ])
-    }
-
-    #[inline]
-    fn update(cell: &mut Self::Cell, diff: Self::Diff) {
-        *cell = diff;
-    }
+    /// Updates a cell with a diff and movements into this cell.
+    fn update(&mut Self::Cell, Self::Diff, Self::MoveNeighbors);
 }
 
 /// Represents the state of the simulation.
@@ -170,103 +159,103 @@ impl<S: Sim> Grid<S> {
         Self::new_coords(width, height, coords.into_iter().map(|c| (c, true)))
     }
 
-    /// Run the Grid for one cycle.
-    pub fn cycle(&mut self) {
-        self.step();
-        self.update();
-    }
+    // /// Run the Grid for one cycle.
+    // pub fn cycle(&mut self) {
+    //     self.step();
+    //     self.update();
+    // }
 
-    /// Run the Grid for one cycle and parallelize the simulation.
-    pub fn cycle_par(&mut self)
-    where
-        S::Cell: Sync + Send,
-        S::Diff: Sync + Send,
-    {
-        self.step_par();
-        self.update_par();
-    }
+    // /// Run the Grid for one cycle and parallelize the simulation.
+    // pub fn cycle_par(&mut self)
+    // where
+    //     S::Cell: Sync + Send,
+    //     S::Diff: Sync + Send,
+    // {
+    //     self.step_par();
+    //     self.update_par();
+    // }
 
-    fn step(&mut self) {
-        self.diffs = {
-            let cs = |i| &self.cells[i % self.size()];
-            (0..self.size())
-                .map(|i| {
-                    [
-                        [
-                            cs(self.size() + i - 1 - self.width),
-                            cs(self.size() + i - self.width),
-                            cs(self.size() + i + 1 - self.width),
-                        ],
-                        [
-                            cs(self.size() + i - 1),
-                            cs(self.size() + i),
-                            cs(self.size() + i + 1),
-                        ],
-                        [
-                            cs(self.size() + i - 1 + self.width),
-                            cs(self.size() + i + self.width),
-                            cs(self.size() + i + 1 + self.width),
-                        ],
-                    ]
-                })
-                .map(S::step)
-                .collect()
-        };
-    }
+    // fn step(&mut self) {
+    //     self.diffs = {
+    //         let cs = |i| &self.cells[i % self.size()];
+    //         (0..self.size())
+    //             .map(|i| {
+    //                 [
+    //                     [
+    //                         cs(self.size() + i - 1 - self.width),
+    //                         cs(self.size() + i - self.width),
+    //                         cs(self.size() + i + 1 - self.width),
+    //                     ],
+    //                     [
+    //                         cs(self.size() + i - 1),
+    //                         cs(self.size() + i),
+    //                         cs(self.size() + i + 1),
+    //                     ],
+    //                     [
+    //                         cs(self.size() + i - 1 + self.width),
+    //                         cs(self.size() + i + self.width),
+    //                         cs(self.size() + i + 1 + self.width),
+    //                     ],
+    //                 ]
+    //             })
+    //             .map(S::step)
+    //             .collect()
+    //     };
+    // }
 
-    fn step_par(&mut self)
-    where
-        S::Cell: Sync,
-        S::Diff: Sync + Send,
-    {
-        self.diffs = {
-            let cs = |i| &self.cells[i % self.size()];
-            (0..self.size())
-                .into_par_iter()
-                .map(|i| {
-                    [
-                        [
-                            cs(self.size() + i - 1 - self.width),
-                            cs(self.size() + i - self.width),
-                            cs(self.size() + i + 1 - self.width),
-                        ],
-                        [
-                            cs(self.size() + i - 1),
-                            cs(self.size() + i),
-                            cs(self.size() + i + 1),
-                        ],
-                        [
-                            cs(self.size() + i - 1 + self.width),
-                            cs(self.size() + i + self.width),
-                            cs(self.size() + i + 1 + self.width),
-                        ],
-                    ]
-                })
-                .map(S::step)
-                .collect()
-        };
-    }
+    // fn step_par(&mut self)
+    // where
+    //     S::Cell: Sync,
+    //     S::Diff: Sync + Send,
+    // {
+    //     self.diffs = {
+    //         let cs = |i| &self.cells[i % self.size()];
+    //         (0..self.size())
+    //             .into_par_iter()
+    //             .map(|i| {
+    //                 [
+    //                     [
+    //                         cs(self.size() + i - 1 - self.width),
+    //                         cs(self.size() + i - self.width),
+    //                         cs(self.size() + i + 1 - self.width),
+    //                     ],
+    //                     [
+    //                         cs(self.size() + i - 1),
+    //                         cs(self.size() + i),
+    //                         cs(self.size() + i + 1),
+    //                     ],
+    //                     [
+    //                         cs(self.size() + i - 1 + self.width),
+    //                         cs(self.size() + i + self.width),
+    //                         cs(self.size() + i + 1 + self.width),
+    //                     ],
+    //                 ]
+    //             })
+    //             .map(S::step)
+    //             .collect()
+    //     };
+    // }
 
-    fn update(&mut self) {
-        for (cell, diff) in self.cells.iter_mut().zip(self.diffs.drain(..)) {
-            S::update(cell, diff);
-        }
-    }
+    // fn update(&mut self) {
+    //     for (cell, diff) in self.cells.iter_mut().zip(self.diffs.drain(..)) {
+    //         S::update(cell, diff);
+    //     }
+    // }
 
-    fn update_par(&mut self)
-    where
-        S::Cell: Sync + Send,
-        S::Diff: Sync + Send,
-    {
-        let mut diffs = Default::default();
-        std::mem::swap(&mut diffs, &mut self.diffs);
-        self.cells[..]
-            .par_iter_mut()
-            .zip(diffs.into_par_iter())
-            .for_each(|(cell, diff)| {
-                S::update(cell, diff);
-            });
-    }
+    // fn update_par(&mut self)
+    // where
+    //     S::Cell: Sync + Send,
+    //     S::Diff: Sync + Send,
+    // {
+    //     let mut diffs = Default::default();
+    //     std::mem::swap(&mut diffs, &mut self.diffs);
+    //     self.cells[..]
+    //         .par_iter_mut()
+    //         .zip(diffs.into_par_iter())
+    //         .for_each(|(cell, diff)| {
+    //             S::update(cell, diff);
+    //         });
+    // }
 
     /// Get the Grid's Cell slice.
     #[inline]
@@ -305,14 +294,11 @@ pub enum GOL {}
 
 impl Rule for GOL {
     type Cell = bool;
+    type Neighbors = neumann::Neighbors<bool>;
 
-    fn rule(cells: [[bool; 3]; 3]) -> bool {
-        let n = cells
-            .iter()
-            .flat_map(|cs| cs.iter())
-            .filter(|&&c| c)
-            .count();
-        if cells[1][1] {
+    fn rule(cell: bool, neighbors: Self::Neighbors) -> bool {
+        let n = neighbors.iter().filter(|&c| c).count();
+        if cell {
             n >= 3 && n <= 4
         } else {
             n == 3
