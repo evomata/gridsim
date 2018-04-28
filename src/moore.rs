@@ -21,23 +21,22 @@ impl Direction {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Neighborhood<'a, T: 'a>([&'a T; 4]);
+pub struct Neighborhood<T> {
+    pub up: T,
+    pub down: T,
+    pub left: T,
+    pub right: T,
+}
 
-impl<'a, T> Index<Direction> for Neighborhood<'a, T> {
+impl<'a, T> Index<Direction> for Neighborhood<T> {
     type Output = T;
     fn index(&self, ix: Direction) -> &T {
         use self::Direction::*;
-        self.0[match ix {
-                   Up => 0,
-                   Down => 1,
-                   Left => 2,
-                   Right => 3,
-               }]
-    }
-}
-
-impl<'a, T> Neighborhood<'a, T> {
-    pub fn new(neighborhood: [&'a T; 4]) -> Self {
-        Neighborhood(neighborhood)
+        match ix {
+            Up => &self.up,
+            Down => &self.down,
+            Left => &self.left,
+            Right => &self.right,
+        }
     }
 }
