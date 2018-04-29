@@ -54,6 +54,34 @@ impl Direction {
             DownRight => (1, 1),
         }
     }
+
+    pub fn left(self) -> Self {
+        use self::Direction::*;
+        match self {
+            Right => UpRight,
+            UpRight => Up,
+            Up => UpLeft,
+            UpLeft => Left,
+            Left => DownLeft,
+            DownLeft => Down,
+            Down => DownRight,
+            DownRight => Right,
+        }
+    }
+
+    pub fn right(self) -> Self {
+        use self::Direction::*;
+        match self {
+            Right => DownRight,
+            UpRight => Right,
+            Up => UpRight,
+            UpLeft => Up,
+            Left => UpLeft,
+            DownLeft => Left,
+            Down => DownLeft,
+            DownRight => Down,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default)]
