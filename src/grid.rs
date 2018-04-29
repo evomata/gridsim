@@ -137,16 +137,22 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
         &self.cells[i]
     }
 
+    /// Get a &Cell. Panics if out of bounds.
+    #[inline]
+    pub unsafe fn get_cell_unchecked(&self, i: usize) -> &S::Cell {
+        self.cells.get_unchecked(i)
+    }
+
     /// This can only be called in the trait `TakeMoveDirection` when implmenting a new `Neighborhood`.
     #[inline]
     pub unsafe fn get_move_neighbors(&self, i: usize) -> &S::MoveNeighbors {
-        &self.diffs[i].1
+        &self.diffs.get_unchecked(i).1
     }
 
     /// This can only be called in the trait `TakeMoveDirection` when implmenting a new `Neighborhood`.
     #[inline]
     pub unsafe fn get_diff(&self, i: usize) -> &S::Diff {
-        &self.diffs[i].0
+        &self.diffs.get_unchecked(i).0
     }
 
     /// Get the Grid's Cell slice.

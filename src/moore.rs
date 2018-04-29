@@ -156,17 +156,7 @@ where
 {
     #[inline]
     fn get_neighbors(&'a self, ix: usize) -> Neighbors<&'a C> {
-        Neighbors::new(|dir| self.get_cell(self.delta_index(ix, dir.delta())))
-    }
-}
-
-impl<'a, S> GetNeighbors<'static, usize, Neighbors<bool>> for SquareGrid<'a, S>
-where
-    S: Sim<'a, Cell = bool>,
-{
-    #[inline]
-    fn get_neighbors(&'a self, ix: usize) -> Neighbors<bool> {
-        Neighbors::new(|dir| *self.get_cell(self.delta_index(ix, dir.delta())))
+        Neighbors::new(|dir| unsafe { self.get_cell_unchecked(self.delta_index(ix, dir.delta())) })
     }
 }
 
