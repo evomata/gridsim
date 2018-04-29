@@ -1,9 +1,8 @@
 use std::iter::{once, Chain, Once};
 use std::ops::{Index, IndexMut};
-use {Rule, Sim, SquareGrid};
+use {Sim, SquareGrid};
 
 use super::GetNeighbors;
-use rayon::prelude::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIterator)]
 pub enum Direction {
@@ -84,34 +83,18 @@ impl<T> IndexMut<Direction> for Neighbors<T> {
     }
 }
 
+type NeighborhoodIter<T> = Chain<
+    Chain<
+        Chain<Chain<Chain<Chain<Chain<Once<T>, Once<T>>, Once<T>>, Once<T>>, Once<T>>, Once<T>>,
+        Once<T>,
+    >,
+    Once<T>,
+>;
+
 impl<T> super::Neighborhood<T> for Neighbors<T> {
     type Direction = Direction;
-    type Iter = Chain<
-        Chain<
-            Chain<Chain<Chain<Chain<Chain<Once<T>, Once<T>>, Once<T>>, Once<T>>, Once<T>>, Once<T>>,
-            Once<T>,
-        >,
-        Once<T>,
-    >;
-    type DirIter = Chain<
-        Chain<
-            Chain<
-                Chain<
-                    Chain<
-                        Chain<
-                            Chain<Once<(Direction, T)>, Once<(Direction, T)>>,
-                            Once<(Direction, T)>,
-                        >,
-                        Once<(Direction, T)>,
-                    >,
-                    Once<(Direction, T)>,
-                >,
-                Once<(Direction, T)>,
-            >,
-            Once<(Direction, T)>,
-        >,
-        Once<(Direction, T)>,
-    >;
+    type Iter = NeighborhoodIter<T>;
+    type DirIter = NeighborhoodIter<(Direction, T)>;
 
     fn iter(self) -> Self::Iter {
         once(self.right)
