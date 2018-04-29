@@ -61,6 +61,13 @@ pub trait Sim {
     fn update(&mut Self::Cell, Self::Diff, Self::MoveNeighbors);
 }
 
+pub trait TakeDiff<Idx, Diff> {
+    /// This should be called exactly once for every index, making it unsafe.
+    ///
+    /// This is marked unsafe to ensure people read the documentation due to the above requirement.
+    unsafe fn take_diff(&self, Idx) -> Diff;
+}
+
 impl<'a, R, C: 'a, N> Sim for R
 where
     R: Rule<Cell = C, Neighbors = N>,

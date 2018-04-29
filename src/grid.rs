@@ -1,9 +1,11 @@
-use {GetNeighbors, Sim};
+use {GetNeighbors, Sim, TakeDiff, TakeMoveDirection, TakeMoveNeighbors};
 
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
-use rayon::iter::IntoParallelRefMutIterator;
+use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
+use std::mem::transmute;
+use std::mem::transmute_copy;
 use std::mem::ManuallyDrop;
 
 /// Represents the state of the simulation.
@@ -19,6 +21,15 @@ pub struct SquareGrid<S: Sim> {
 
 impl<S: Sim> GetNeighbors<'static, usize, ()> for SquareGrid<S> {
     fn get_neighbors(&self, _: usize) {}
+}
+
+impl<S, D> TakeDiff<usize, D> for SquareGrid<S>
+where
+    S: Sim<Diff = D>,
+{
+    unsafe fn take_diff(&self, ix: usize) -> D {
+        transmute_copy(self.get_diff(ix))
+    }
 }
 
 impl<S: Sim> SquareGrid<S> {
@@ -134,6 +145,12 @@ impl<S: Sim> SquareGrid<S> {
         &self.diffs[i].1
     }
 
+    /// This can only be called in the trait `TakeMoveDirection` when implmenting a new `Neighborhood`.
+    #[inline]
+    pub unsafe fn get_diff(&self, i: usize) -> &S::Diff {
+        &self.diffs[i].0
+    }
+
     /// Get the Grid's Cell slice.
     #[inline]
     pub fn get_cells(&self) -> &[S::Cell] {
@@ -165,17 +182,15 @@ impl<S: Sim> SquareGrid<S> {
     }
 }
 
-// impl<'a, S, C, D, M, N, MN, IN, IMN> SquareGrid<S>
+// impl<'a, S, C, D, M, N, MN> SquareGrid<S>
 // where
-//     IN: Into<N>,
-//     IMN: Into<MN>,
 //     S: Sim<Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN>,
 //     S::Cell: Sync + Send,
 //     S::Diff: Sync + Send,
 //     S::Move: Sync + Send,
 //     S::Neighbors: Sync + Send,
 //     S::MoveNeighbors: Sync + Send,
-//     Self: GetNeighbors<'a, usize, IN>,
+//     Self: GetNeighbors<'a, usize, N>,
 // {
 //     /// Run the Grid for one cycle and parallelize the simulation.
 //     pub fn cycle(&'a mut self) {
@@ -188,19 +203,24 @@ impl<S: Sim> SquareGrid<S> {
 //             let cs = |i| &self.cells[i % self.size()];
 //             (0..self.size())
 //                 .into_par_iter()
-//                 .map(|i| Sim::step(&self.cells[i % self.size()], self.get_neighbors(i).into()))
+//                 .map(|i| Sim::step(&self.cells[i % self.size()], self.get_neighbors(i)))
+//                 .map(ManuallyDrop::new)
 //                 .collect()
 //         };
 //     }
 
 //     fn update(&'a mut self) {
-//         let mut diffs = Default::default();
-//         ::std::mem::swap(&mut diffs, &mut self.diffs);
 //         self.cells[..]
-//             .par_iter_mut()
-//             .zip(diffs.into_par_iter())
-//             .for_each(|(cell, diff)| {
-//                 S::update(cell, diff);
+//             .par_iter()
+//             .enumerate()
+//             .for_each(|(ix, cell)| unsafe {
+//                 S::update(
+//                     transmute(cell),
+//                     self.take_diff(ix),
+//                     (self as &Self).take_move_neighbors(ix),
+//                 );
 //             });
+//         // This wont call any `drop()` because of the `ManuallyDrop`.
+//         self.diffs.clear();
 //     }
 // }

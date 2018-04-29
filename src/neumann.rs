@@ -183,7 +183,7 @@ impl<S, M> TakeMoveNeighbors<usize, Neighbors<M>> for SquareGrid<S>
 where
     S: Sim<Move = M, MoveNeighbors = Neighbors<M>>,
 {
-    unsafe fn take_move_neighbors(&mut self, ix: usize) -> Neighbors<M> {
+    unsafe fn take_move_neighbors(&self, ix: usize) -> Neighbors<M> {
         use Direction;
         Neighbors::new(|dir| self.take_move_direction(self.delta_index(ix, dir.delta()), dir.inv()))
     }

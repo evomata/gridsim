@@ -23,15 +23,15 @@ pub trait GetNeighbors<'a, Idx, Neighbors> {
 }
 
 pub trait TakeMoveDirection<Idx, Dir, Move> {
-    /// This should only be called exactly once for every index and direction.
+    /// This should be called exactly once for every index and direction.
     ///
     /// This is marked unsafe to ensure people read the documentation due to the above requirement.
     unsafe fn take_move_direction(&self, Idx, Dir) -> Move;
 }
 
 pub trait TakeMoveNeighbors<Idx, MoveNeighbors> {
-    /// This should only be called exactly once for every index, making it unsafe.
+    /// This should be called exactly once for every index, making it unsafe.
     ///
     /// This is marked unsafe to ensure people read the documentation due to the above requirement.
-    unsafe fn take_move_neighbors(&mut self, Idx) -> MoveNeighbors;
+    unsafe fn take_move_neighbors(&self, Idx) -> MoveNeighbors;
 }
