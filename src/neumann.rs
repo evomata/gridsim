@@ -69,7 +69,7 @@ impl<T> Index<Direction> for Neighbors<T> {
 }
 
 impl<T> IndexMut<Direction> for Neighbors<T> {
-    fn index_mut(&self, ix: Direction) -> &mut T {
+    fn index_mut(&mut self, ix: Direction) -> &mut T {
         use self::Direction::*;
         match ix {
             Right => &mut self.right,
@@ -161,14 +161,14 @@ where
 {
     fn get_neighbors(&'a self, ix: usize) -> Neighbors<&'a C> {
         Neighbors {
-            up_left: self.get_cell(self.size() + ix - 1 - self.width),
-            up: self.get_cell(self.size() + ix - self.width),
-            up_right: self.get_cell(self.size() + ix + 1 - self.width),
+            up_left: self.get_cell(self.size() + ix - 1 - self.get_width()),
+            up: self.get_cell(self.size() + ix - self.get_width()),
+            up_right: self.get_cell(self.size() + ix + 1 - self.get_width()),
             left: self.get_cell(self.size() + ix - 1),
             right: self.get_cell(self.size() + ix + 1),
-            down_left: self.get_cell(self.size() + ix - 1 + self.width),
-            down: self.get_cell(self.size() + ix + self.width),
-            down_right: self.get_cell(self.size() + ix + 1 + self.width),
+            down_left: self.get_cell(self.size() + ix - 1 + self.get_width()),
+            down: self.get_cell(self.size() + ix + self.get_width()),
+            down_right: self.get_cell(self.size() + ix + 1 + self.get_width()),
         }
     }
 }
