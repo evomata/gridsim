@@ -4,6 +4,7 @@ use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
+use std::mem::ManuallyDrop;
 
 /// Represents the state of the simulation.
 ///
@@ -11,7 +12,7 @@ use rayon::iter::ParallelIterator;
 #[derive(Clone, Debug)]
 pub struct SquareGrid<S: Sim> {
     cells: Vec<S::Cell>,
-    diffs: Vec<(S::Diff, S::MoveNeighbors)>,
+    diffs: Vec<ManuallyDrop<(S::Diff, S::MoveNeighbors)>>,
     width: usize,
     height: usize,
 }
@@ -111,10 +112,26 @@ impl<S: Sim> SquareGrid<S> {
         Self::new_coords(width, height, coords.into_iter().map(|c| (c, true)))
     }
 
-    /// Get a &Cell by wrapped index.
+    /// Offset an index to a new index.
+    #[inline]
+    pub fn delta_index(&self, i: usize, delta: (isize, isize)) -> usize {
+        // Wrap width and height to be in the range (-dim, dim).
+        let x = delta.0 % self.width as isize;
+        let y = delta.1 % self.height as isize;
+
+        ((i + self.size()) as isize + x + y * self.width as isize) as usize % self.size()
+    }
+
+    /// Get a &Cell. Panics if out of bounds.
     #[inline]
     pub fn get_cell(&self, i: usize) -> &S::Cell {
-        &self.cells[i % self.size()]
+        &self.cells[i]
+    }
+
+    /// This can only be called in the trait `TakeMoveDirection` when implmenting a new `Neighborhood`.
+    #[inline]
+    pub unsafe fn get_move_neighbors(&self, i: usize) -> &S::MoveNeighbors {
+        &self.diffs[i].1
     }
 
     /// Get the Grid's Cell slice.

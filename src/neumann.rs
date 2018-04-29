@@ -1,8 +1,10 @@
 use std::iter::{once, Chain, Once};
 use std::ops::{Index, IndexMut};
-use {Sim, SquareGrid};
+use {Sim, SquareGrid, TakeMoveDirection, TakeMoveNeighbors};
 
-use super::GetNeighbors;
+use std::mem::transmute_copy;
+
+use {GetNeighbors, Neighborhood};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIterator)]
 pub enum Direction {
@@ -35,6 +37,22 @@ impl super::Direction for Direction {
 
     fn directions() -> Self::Directions {
         Direction::iter_variants()
+    }
+}
+
+impl Direction {
+    fn delta(self) -> (isize, isize) {
+        use self::Direction::*;
+        match self {
+            Right => (1, 0),
+            UpRight => (1, -1),
+            Up => (0, -1),
+            UpLeft => (-1, -1),
+            Left => (-1, 0),
+            DownLeft => (-1, 1),
+            Down => (0, 1),
+            DownRight => (1, 1),
+        }
     }
 }
 
@@ -91,10 +109,24 @@ type NeighborhoodIter<T> = Chain<
     Once<T>,
 >;
 
-impl<T> super::Neighborhood<T> for Neighbors<T> {
+impl<T> Neighborhood<T> for Neighbors<T> {
     type Direction = Direction;
     type Iter = NeighborhoodIter<T>;
     type DirIter = NeighborhoodIter<(Direction, T)>;
+
+    fn new<F: FnMut(Direction) -> T>(mut f: F) -> Neighbors<T> {
+        use self::Direction::*;
+        Neighbors {
+            right: f(Right),
+            up_right: f(UpRight),
+            up: f(Up),
+            up_left: f(UpLeft),
+            left: f(Left),
+            down_left: f(DownLeft),
+            down: f(Down),
+            down_right: f(DownRight),
+        }
+    }
 
     fn iter(self) -> Self::Iter {
         once(self.right)
@@ -120,21 +152,12 @@ impl<T> super::Neighborhood<T> for Neighbors<T> {
     }
 }
 
-impl<'a, T> Into<Neighbors<T>> for Neighbors<&'a T>
+impl<'a, T> From<Neighbors<&'a T>> for Neighbors<T>
 where
     T: Clone,
 {
-    fn into(self) -> Neighbors<T> {
-        Neighbors {
-            right: self.right.clone(),
-            up_right: self.up_right.clone(),
-            up: self.up.clone(),
-            up_left: self.up_left.clone(),
-            left: self.left.clone(),
-            down_left: self.down_left.clone(),
-            down: self.down.clone(),
-            down_right: self.down_right.clone(),
-        }
+    fn from(f: Neighbors<&'a T>) -> Self {
+        Neighbors::new(|dir| f[dir].clone())
     }
 }
 
@@ -143,15 +166,25 @@ where
     S: Sim<Cell = C>,
 {
     fn get_neighbors(&'a self, ix: usize) -> Neighbors<&'a C> {
-        Neighbors {
-            up_left: self.get_cell(self.size() + ix - 1 - self.get_width()),
-            up: self.get_cell(self.size() + ix - self.get_width()),
-            up_right: self.get_cell(self.size() + ix + 1 - self.get_width()),
-            left: self.get_cell(self.size() + ix - 1),
-            right: self.get_cell(self.size() + ix + 1),
-            down_left: self.get_cell(self.size() + ix - 1 + self.get_width()),
-            down: self.get_cell(self.size() + ix + self.get_width()),
-            down_right: self.get_cell(self.size() + ix + 1 + self.get_width()),
-        }
+        Neighbors::new(|dir| self.get_cell(self.delta_index(ix, dir.delta())))
+    }
+}
+
+impl<S, M> TakeMoveDirection<usize, Direction, M> for SquareGrid<S>
+where
+    S: Sim<Move = M, MoveNeighbors = Neighbors<M>>,
+{
+    unsafe fn take_move_direction(&self, ix: usize, dir: Direction) -> M {
+        transmute_copy(&self.get_move_neighbors(ix)[dir])
+    }
+}
+
+impl<S, M> TakeMoveNeighbors<usize, Neighbors<M>> for SquareGrid<S>
+where
+    S: Sim<Move = M, MoveNeighbors = Neighbors<M>>,
+{
+    unsafe fn take_move_neighbors(&mut self, ix: usize) -> Neighbors<M> {
+        use Direction;
+        Neighbors::new(|dir| self.take_move_direction(self.delta_index(ix, dir.delta()), dir.inv()))
     }
 }
