@@ -17,6 +17,7 @@ pub enum Direction {
 impl super::Direction for Direction {
     type Directions = DirectionEnumIterator;
 
+    #[inline]
     fn inv(self) -> Direction {
         use self::Direction::*;
         match self {
@@ -27,12 +28,14 @@ impl super::Direction for Direction {
         }
     }
 
+    #[inline]
     fn directions() -> Self::Directions {
         Direction::iter_variants()
     }
 }
 
 impl Direction {
+    #[inline]
     fn delta(self) -> (isize, isize) {
         use self::Direction::*;
         match self {
@@ -43,6 +46,7 @@ impl Direction {
         }
     }
 
+    #[inline]
     pub fn left(self) -> Self {
         use self::Direction::*;
         match self {
@@ -53,6 +57,7 @@ impl Direction {
         }
     }
 
+    #[inline]
     pub fn right(self) -> Self {
         use self::Direction::*;
         match self {
@@ -74,6 +79,7 @@ pub struct Neighbors<T> {
 
 impl<T> Index<Direction> for Neighbors<T> {
     type Output = T;
+    #[inline]
     fn index(&self, ix: Direction) -> &T {
         use self::Direction::*;
         match ix {
@@ -86,6 +92,7 @@ impl<T> Index<Direction> for Neighbors<T> {
 }
 
 impl<T> IndexMut<Direction> for Neighbors<T> {
+    #[inline]
     fn index_mut(&mut self, ix: Direction) -> &mut T {
         use self::Direction::*;
         match ix {
@@ -104,6 +111,7 @@ impl<T> Neighborhood<T> for Neighbors<T> {
     type Iter = NeighborhoodIter<T>;
     type DirIter = NeighborhoodIter<(Direction, T)>;
 
+    #[inline]
     fn new<F: FnMut(Direction) -> T>(mut f: F) -> Neighbors<T> {
         use self::Direction::*;
         Neighbors {
@@ -114,6 +122,7 @@ impl<T> Neighborhood<T> for Neighbors<T> {
         }
     }
 
+    #[inline]
     fn iter(self) -> Self::Iter {
         once(self.right)
             .chain(once(self.up))
@@ -121,6 +130,7 @@ impl<T> Neighborhood<T> for Neighbors<T> {
             .chain(once(self.down))
     }
 
+    #[inline]
     fn dir_iter(self) -> Self::DirIter {
         use self::Direction::*;
         once((Right, self.right))
@@ -134,6 +144,7 @@ impl<'a, T> From<Neighbors<&'a T>> for Neighbors<T>
 where
     T: Clone,
 {
+    #[inline]
     fn from(f: Neighbors<&'a T>) -> Self {
         Neighbors::new(|dir| f[dir].clone())
     }
@@ -143,6 +154,7 @@ impl<'a, C, S> GetNeighbors<'a, usize, Neighbors<&'a C>> for SquareGrid<'a, S>
 where
     S: Sim<'a, Cell = C>,
 {
+    #[inline]
     fn get_neighbors(&'a self, ix: usize) -> Neighbors<&'a C> {
         Neighbors::new(|dir| self.get_cell(self.delta_index(ix, dir.delta())))
     }
@@ -152,6 +164,7 @@ impl<'a, S> GetNeighbors<'static, usize, Neighbors<bool>> for SquareGrid<'a, S>
 where
     S: Sim<'a, Cell = bool>,
 {
+    #[inline]
     fn get_neighbors(&'a self, ix: usize) -> Neighbors<bool> {
         Neighbors::new(|dir| *self.get_cell(self.delta_index(ix, dir.delta())))
     }
@@ -161,6 +174,7 @@ impl<'a, S, M> TakeMoveDirection<usize, Direction, M> for SquareGrid<'a, S>
 where
     S: Sim<'a, Move = M, MoveNeighbors = Neighbors<M>>,
 {
+    #[inline]
     unsafe fn take_move_direction(&self, ix: usize, dir: Direction) -> M {
         transmute_copy(&self.get_move_neighbors(ix)[dir])
     }
@@ -170,6 +184,7 @@ impl<'a, S, M> TakeMoveNeighbors<usize, Neighbors<M>> for SquareGrid<'a, S>
 where
     S: Sim<'a, Move = M, MoveNeighbors = Neighbors<M>>,
 {
+    #[inline]
     unsafe fn take_move_neighbors(&self, ix: usize) -> Neighbors<M> {
         use Direction;
         Neighbors::new(|dir| self.take_move_direction(self.delta_index(ix, dir.delta()), dir.inv()))

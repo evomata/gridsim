@@ -16,6 +16,7 @@ pub struct SquareGrid<'a, S: Sim<'a>> {
 }
 
 impl<'a, S: Sim<'a>> TakeMoveNeighbors<usize, ()> for SquareGrid<'a, S> {
+    #[inline]
     unsafe fn take_move_neighbors(&self, _: usize) {}
 }
 
@@ -23,6 +24,7 @@ impl<'a, S, D> TakeDiff<usize, D> for SquareGrid<'a, S>
 where
     S: Sim<'a, Diff = D>,
 {
+    #[inline]
     unsafe fn take_diff(&self, ix: usize) -> D {
         transmute_copy(self.get_diff(ix))
     }
@@ -196,18 +198,15 @@ where
     }
 
     fn step(&mut self) {
-        self.diffs = self.make_diffs();
-    }
-
-    fn make_diffs(&self) -> Vec<ManuallyDrop<(S::Diff, S::MoveNeighbors)>> {
-        self.cells[..]
+        self.diffs = self.cells[..]
             .par_iter()
             .enumerate()
             .map(|(ix, c)| self.single_step(ix, c))
             .map(ManuallyDrop::new)
-            .collect()
+            .collect();
     }
 
+    #[inline]
     fn single_step(&self, ix: usize, c: &C) -> (S::Diff, S::MoveNeighbors) {
         // TODO: Convey to the compiler this is okay without unsafe.
         let grid = unsafe { &*(self as *const Self) };
