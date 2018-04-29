@@ -209,6 +209,7 @@ where
     }
 
     fn single_step(&self, ix: usize, c: &C) -> (S::Diff, S::MoveNeighbors) {
+        // TODO: Convey to the compiler this is okay without unsafe.
         let grid = unsafe { &*(self as *const Self) };
         S::step(c, grid.get_neighbors(ix))
     }
