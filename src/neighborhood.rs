@@ -1,4 +1,4 @@
-pub trait Direction {
+pub trait Direction: Sized {
     type Directions: Iterator<Item = Self>;
 
     fn inv(self) -> Self;

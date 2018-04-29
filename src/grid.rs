@@ -16,7 +16,7 @@ pub struct SquareGrid<S: Sim> {
     height: usize,
 }
 
-impl<S> GetNeighbors<'static, usize, ()> for SquareGrid<S> {
+impl<S: Sim> GetNeighbors<'static, usize, ()> for SquareGrid<S> {
     fn get_neighbors(&self, _: usize) {}
 }
 
@@ -148,42 +148,42 @@ impl<S: Sim> SquareGrid<S> {
     }
 }
 
-impl<'a, S, C, D, M, N, MN, IN, IMN> SquareGrid<S>
-where
-    IN: Into<N>,
-    IMN: Into<MN>,
-    S: Sim<Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN>,
-    S::Cell: Sync + Send,
-    S::Diff: Sync + Send,
-    S::Move: Sync + Send,
-    S::Neighbors: Sync + Send,
-    S::MoveNeighbors: Sync + Send,
-    Self: GetNeighbors<'a, usize, IN>,
-{
-    /// Run the Grid for one cycle and parallelize the simulation.
-    pub fn cycle(&'a mut self) {
-        self.step();
-        self.update();
-    }
+// impl<'a, S, C, D, M, N, MN, IN, IMN> SquareGrid<S>
+// where
+//     IN: Into<N>,
+//     IMN: Into<MN>,
+//     S: Sim<Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN>,
+//     S::Cell: Sync + Send,
+//     S::Diff: Sync + Send,
+//     S::Move: Sync + Send,
+//     S::Neighbors: Sync + Send,
+//     S::MoveNeighbors: Sync + Send,
+//     Self: GetNeighbors<'a, usize, IN>,
+// {
+//     /// Run the Grid for one cycle and parallelize the simulation.
+//     pub fn cycle(&'a mut self) {
+//         self.step();
+//         self.update();
+//     }
 
-    fn step(&'a mut self) {
-        self.diffs = {
-            let cs = |i| &self.cells[i % self.size()];
-            (0..self.size())
-                .into_par_iter()
-                .map(|i| Sim::step(&self.cells[i % self.size()], self.get_neighbors(i).into()))
-                .collect()
-        };
-    }
+//     fn step(&'a mut self) {
+//         self.diffs = {
+//             let cs = |i| &self.cells[i % self.size()];
+//             (0..self.size())
+//                 .into_par_iter()
+//                 .map(|i| Sim::step(&self.cells[i % self.size()], self.get_neighbors(i).into()))
+//                 .collect()
+//         };
+//     }
 
-    fn update(&'a mut self) {
-        let mut diffs = Default::default();
-        ::std::mem::swap(&mut diffs, &mut self.diffs);
-        self.cells[..]
-            .par_iter_mut()
-            .zip(diffs.into_par_iter())
-            .for_each(|(cell, diff)| {
-                S::update(cell, diff);
-            });
-    }
-}
+//     fn update(&'a mut self) {
+//         let mut diffs = Default::default();
+//         ::std::mem::swap(&mut diffs, &mut self.diffs);
+//         self.cells[..]
+//             .par_iter_mut()
+//             .zip(diffs.into_par_iter())
+//             .for_each(|(cell, diff)| {
+//                 S::update(cell, diff);
+//             });
+//     }
+// }

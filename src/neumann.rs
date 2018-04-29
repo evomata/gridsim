@@ -1,5 +1,5 @@
 use std::iter::{once, Chain, Once};
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 use {Rule, Sim, SquareGrid};
 
 use super::GetNeighbors;
@@ -64,6 +64,22 @@ impl<T> Index<Direction> for Neighbors<T> {
             DownLeft => &self.down_left,
             Down => &self.down,
             DownRight => &self.down_right,
+        }
+    }
+}
+
+impl<T> IndexMut<Direction> for Neighbors<T> {
+    fn index_mut(&self, ix: Direction) -> &mut T {
+        use self::Direction::*;
+        match ix {
+            Right => &mut self.right,
+            UpRight => &mut self.up_right,
+            Up => &mut self.up,
+            UpLeft => &mut self.up_left,
+            Left => &mut self.left,
+            DownLeft => &mut self.down_left,
+            Down => &mut self.down,
+            DownRight => &mut self.down_right,
         }
     }
 }
@@ -136,29 +152,6 @@ where
             down: self.down.clone(),
             down_right: self.down_right.clone(),
         }
-    }
-}
-
-impl<T, C> Sim for T
-where
-    T: Rule<Cell = C, Neighbors = Neighbors<C>>,
-    C: Clone,
-{
-    type Cell = C;
-    type Diff = C;
-    type Move = ();
-
-    type Neighbors = Neighbors<C>;
-    type MoveNeighbors = ();
-
-    #[inline]
-    fn step(cell: &C, neighbors: Self::Neighbors) -> (C, ()) {
-        (Self::rule(cell.clone(), neighbors), Default::default())
-    }
-
-    #[inline]
-    fn update(cell: &mut Self::Cell, diff: Self::Diff, _: ()) {
-        *cell = diff;
     }
 }
 

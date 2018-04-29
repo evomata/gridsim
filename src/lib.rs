@@ -34,7 +34,7 @@ pub trait Rule {
     type Neighbors;
 
     /// This defines a rule for how a cell and its neighbors transform into a new cell.
-    fn rule(&Self::Cell, neighbors: Self::Neighbors) -> Self::Cell;
+    fn rule(Self::Cell, neighbors: Self::Neighbors) -> Self::Cell;
 }
 
 /// Defines a simulation for complicated things that have too much state to abandon on the next cycle.
@@ -61,9 +61,10 @@ pub trait Sim {
     fn update(&mut Self::Cell, Self::Diff, Self::MoveNeighbors);
 }
 
-impl<R, C, N> Sim for R
+impl<'a, R, C: 'a, N> Sim for R
 where
     R: Rule<Cell = C, Neighbors = N>,
+    C: Clone,
 {
     type Cell = C;
     type Diff = C;
@@ -73,7 +74,7 @@ where
     type MoveNeighbors = ();
 
     fn step(this: &C, neighbors: N) -> (C, ()) {
-        (Self::rule(this, neighbors), ())
+        (Self::rule(this.clone(), neighbors), ())
     }
 
     fn update(cell: &mut C, next: C, _: ()) {
