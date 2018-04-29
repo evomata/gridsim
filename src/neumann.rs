@@ -189,36 +189,27 @@ where
     }
 }
 
-impl<'a, C, S> GetNeighbors<'a, usize, Neighbors<&'a C>> for SquareGrid<S>
+impl<'a, C, S> GetNeighbors<'a, usize, Neighbors<&'a C>> for SquareGrid<'a, S>
 where
-    S: Sim<Cell = C>,
+    S: Sim<'a, Cell = C>,
 {
     fn get_neighbors(&'a self, ix: usize) -> Neighbors<&'a C> {
         Neighbors::new(|dir| self.get_cell(self.delta_index(ix, dir.delta())))
     }
 }
 
-impl<'a, S> GetNeighbors<'static, usize, Neighbors<bool>> for SquareGrid<S>
+impl<'a, S, M> TakeMoveDirection<usize, Direction, M> for SquareGrid<'a, S>
 where
-    S: Sim<Cell = bool>,
-{
-    fn get_neighbors(&'a self, ix: usize) -> Neighbors<bool> {
-        Neighbors::new(|dir| *self.get_cell(self.delta_index(ix, dir.delta())))
-    }
-}
-
-impl<S, M> TakeMoveDirection<usize, Direction, M> for SquareGrid<S>
-where
-    S: Sim<Move = M, MoveNeighbors = Neighbors<M>>,
+    S: Sim<'a, Move = M, MoveNeighbors = Neighbors<M>>,
 {
     unsafe fn take_move_direction(&self, ix: usize, dir: Direction) -> M {
         transmute_copy(&self.get_move_neighbors(ix)[dir])
     }
 }
 
-impl<S, M> TakeMoveNeighbors<usize, Neighbors<M>> for SquareGrid<S>
+impl<'a, S, M> TakeMoveNeighbors<usize, Neighbors<M>> for SquareGrid<'a, S>
 where
-    S: Sim<Move = M, MoveNeighbors = Neighbors<M>>,
+    S: Sim<'a, Move = M, MoveNeighbors = Neighbors<M>>,
 {
     unsafe fn take_move_neighbors(&self, ix: usize) -> Neighbors<M> {
         use Direction;

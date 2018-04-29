@@ -27,7 +27,7 @@ pub use grid::*;
 pub use neighborhood::*;
 
 /// Defines a simulation for simple things like cellular automata.
-pub trait Rule {
+pub trait Rule<'a> {
     /// The type of cells on the grid
     type Cell;
     /// The neighborhood of the rule
@@ -41,7 +41,7 @@ pub trait Rule {
 ///
 /// This enforces a rule in that all new cells are only produced from old board state. This prevents the
 /// update order from breaking the simulation.
-pub trait Sim {
+pub trait Sim<'a> {
     /// The type of cells on the grid
     type Cell;
     /// Represents all information necessary to modify a cell in the previous grid to produce the version in the next
@@ -68,9 +68,9 @@ pub trait TakeDiff<Idx, Diff> {
     unsafe fn take_diff(&self, Idx) -> Diff;
 }
 
-impl<R, C, N> Sim for R
+impl<'a, R, C, N> Sim<'a> for R
 where
-    R: Rule<Cell = C, Neighbors = N>,
+    R: Rule<'a, Cell = C, Neighbors = N>,
     C: Clone,
 {
     type Cell = C;
@@ -93,12 +93,12 @@ where
 #[derive(Debug)]
 pub enum GOL {}
 
-impl Rule for GOL {
+impl<'a> Rule<'a> for GOL {
     type Cell = bool;
-    type Neighbors = neumann::Neighbors<bool>;
+    type Neighbors = neumann::Neighbors<&'a bool>;
 
     fn rule(cell: bool, neighbors: Self::Neighbors) -> bool {
-        let n = neighbors.iter().filter(|&c| c).count();
+        let n = neighbors.iter().filter(|&&c| c).count();
         if cell {
             n >= 2 && n <= 3
         } else {

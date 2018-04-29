@@ -8,29 +8,29 @@ use std::mem::ManuallyDrop;
 
 /// Represents the state of the simulation.
 #[derive(Clone, Debug)]
-pub struct SquareGrid<S: Sim> {
+pub struct SquareGrid<'a, S: Sim<'a>> {
     cells: Vec<S::Cell>,
     diffs: Vec<ManuallyDrop<(S::Diff, S::MoveNeighbors)>>,
     width: usize,
     height: usize,
 }
 
-impl<S: Sim> TakeMoveNeighbors<usize, ()> for SquareGrid<S> {
+impl<'a, S: Sim<'a>> TakeMoveNeighbors<usize, ()> for SquareGrid<'a, S> {
     unsafe fn take_move_neighbors(&self, _: usize) {}
 }
 
-impl<S, D> TakeDiff<usize, D> for SquareGrid<S>
+impl<'a, S, D> TakeDiff<usize, D> for SquareGrid<'a, S>
 where
-    S: Sim<Diff = D>,
+    S: Sim<'a, Diff = D>,
 {
     unsafe fn take_diff(&self, ix: usize) -> D {
         transmute_copy(self.get_diff(ix))
     }
 }
 
-impl<S: Sim> SquareGrid<S> {
+impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
     /// Make a new grid using the Cell's Default impl.
-    pub fn new(width: usize, height: usize) -> SquareGrid<S>
+    pub fn new(width: usize, height: usize) -> Self
     where
         S::Cell: Default,
     {
@@ -46,7 +46,7 @@ impl<S: Sim> SquareGrid<S> {
     }
 
     /// Make a new grid by cloning a default Cell.
-    pub fn new_default(width: usize, height: usize, default: S::Cell) -> SquareGrid<S>
+    pub fn new_default(width: usize, height: usize, default: S::Cell) -> Self
     where
         S::Cell: Clone,
     {
@@ -59,7 +59,7 @@ impl<S: Sim> SquareGrid<S> {
     }
 
     /// Make a new grid directly from an initial iter.
-    pub fn new_iter<I>(width: usize, height: usize, iter: I) -> SquareGrid<S>
+    pub fn new_iter<I>(width: usize, height: usize, iter: I) -> Self
     where
         I: IntoIterator<Item = S::Cell>,
     {
@@ -79,7 +79,7 @@ impl<S: Sim> SquareGrid<S> {
     }
 
     /// Make a grid by evaluating each centered signed coordinate to a cell with a closure.
-    pub fn new_coord_map<F>(width: usize, height: usize, mut coord_map: F) -> SquareGrid<S>
+    pub fn new_coord_map<F>(width: usize, height: usize, mut coord_map: F) -> Self
     where
         F: FnMut(isize, isize) -> S::Cell,
     {
@@ -98,7 +98,7 @@ impl<S: Sim> SquareGrid<S> {
     }
 
     /// Make a grid using a collection of centered signed coordinates with associated cells.
-    pub fn new_coords<I>(width: usize, height: usize, coords: I) -> SquareGrid<S>
+    pub fn new_coords<I>(width: usize, height: usize, coords: I) -> Self
     where
         I: IntoIterator<Item = ((isize, isize), S::Cell)>,
         S::Cell: Default,
@@ -111,10 +111,10 @@ impl<S: Sim> SquareGrid<S> {
     }
 
     /// Make a grid using a collection of centered signed coordinates that indicate true cells.
-    pub fn new_true_coords<I>(width: usize, height: usize, coords: I) -> SquareGrid<S>
+    pub fn new_true_coords<I>(width: usize, height: usize, coords: I) -> Self
     where
         I: IntoIterator<Item = (isize, isize)>,
-        S: Sim<Cell = bool>,
+        S: Sim<'a, Cell = bool>,
     {
         Self::new_coords(width, height, coords.into_iter().map(|c| (c, true)))
     }
@@ -178,9 +178,9 @@ impl<S: Sim> SquareGrid<S> {
     }
 }
 
-impl<'a, S, C, D, M, N, MN> SquareGrid<S>
+impl<'a, S, C, D, M, N, MN> SquareGrid<'a, S>
 where
-    S: Sim<Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN> + 'a,
+    S: Sim<'a, Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN> + 'a,
     S::Cell: Sync + Send,
     S::Diff: Sync + Send,
     S::Move: Sync + Send,
