@@ -40,8 +40,8 @@ impl<S: Sim> SquareGrid<S> {
                 .map(|_| S::Cell::default())
                 .collect(),
             diffs: Vec::new(),
-            width: width,
-            height: height,
+            width,
+            height,
         }
     }
 
@@ -53,8 +53,8 @@ impl<S: Sim> SquareGrid<S> {
         SquareGrid {
             cells: ::std::iter::repeat(default).take(width * height).collect(),
             diffs: Vec::new(),
-            width: width,
-            height: height,
+            width,
+            height,
         }
     }
 
@@ -71,10 +71,10 @@ impl<S: Sim> SquareGrid<S> {
             "gridsim::Grid::new_iter: not enough cells provided in iter"
         );
         SquareGrid {
-            cells: cells,
+            cells,
             diffs: Vec::new(),
-            width: width,
-            height: height,
+            width,
+            height,
         }
     }
 
