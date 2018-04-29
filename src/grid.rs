@@ -125,8 +125,12 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
     #[inline]
     pub fn delta_index(&self, i: usize, delta: (isize, isize)) -> usize {
         // Wrap width and height to be in the range (-dim, dim).
-        let x = delta.0 % self.width as isize;
-        let y = delta.1 % self.height as isize;
+        // NOTE: This is technically wrong because if the y or x is negative enough index wont go positive.
+        // Technically this will result in a panic due to usize conversion in debug mode if used incorrectly.
+        // In release mode if it goes too negative it will continue working only if the size of the grid is
+        // a power of two due to the automatic correct modding behavior of negative wraparound.
+        let x = delta.0;
+        let y = delta.1;
 
         ((i + self.size()) as isize + x + y * self.width as isize) as usize % self.size()
     }
