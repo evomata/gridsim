@@ -10,14 +10,20 @@
 //! In its current early state, it will be used for 2d square grids only. The structure will be relatively
 //! similar to the final form, but include none of the above features except for the simulation part.
 
+#![feature(plugin)]
+#![plugin(clippy)]
+
 extern crate rayon;
 #[macro_use]
 extern crate enum_iterator_derive;
 
-pub mod moore;
+mod grid;
 mod neighborhood;
+
+pub mod moore;
 pub mod neumann;
 
+pub use grid::*;
 pub use neighborhood::*;
 
 /// Defines a simulation for simple things like cellular automata.
@@ -28,7 +34,7 @@ pub trait Rule {
     type Neighbors;
 
     /// This defines a rule for how a cell and its neighbors transform into a new cell.
-    fn rule(Self::Cell, neighbors: Self::Neighbors) -> Self::Cell;
+    fn rule(&Self::Cell, neighbors: Self::Neighbors) -> Self::Cell;
 }
 
 /// Defines a simulation for complicated things that have too much state to abandon on the next cycle.
@@ -49,148 +55,29 @@ pub trait Sim {
     type MoveNeighbors;
 
     /// Performs one step of the simulation.
-    fn step(&Self::Cell, neighbors: Self::Neighbors) -> (Self::Diff, Self::MoveNeighbors);
+    fn step(&Self::Cell, Self::Neighbors) -> (Self::Diff, Self::MoveNeighbors);
 
     /// Updates a cell with a diff and movements into this cell.
     fn update(&mut Self::Cell, Self::Diff, Self::MoveNeighbors);
 }
 
-/// Represents the state of the simulation.
-///
-/// This is not as efficient for Rule and is optimized for Sim.
-#[derive(Clone, Debug)]
-pub struct SquareGrid<S: Sim> {
-    cells: Vec<S::Cell>,
-    diffs: Vec<(S::Diff, S::MoveNeighbors)>,
-    width: usize,
-    height: usize,
-}
+impl<R, C, N> Sim for R
+where
+    R: Rule<Cell = C, Neighbors = N>,
+{
+    type Cell = C;
+    type Diff = C;
+    type Move = ();
 
-impl<S: Sim> SquareGrid<S> {
-    /// Make a new grid using the Cell's Default impl.
-    pub fn new(width: usize, height: usize) -> SquareGrid<S>
-    where
-        S::Cell: Default,
-    {
-        SquareGrid {
-            cells: (0..)
-                .take(width * height)
-                .map(|_| S::Cell::default())
-                .collect(),
-            diffs: Vec::new(),
-            width: width,
-            height: height,
-        }
+    type Neighbors = N;
+    type MoveNeighbors = ();
+
+    fn step(this: &C, neighbors: N) -> (C, ()) {
+        (Self::rule(this, neighbors), ())
     }
 
-    /// Make a new grid by cloning a default Cell.
-    pub fn new_default(width: usize, height: usize, default: S::Cell) -> SquareGrid<S>
-    where
-        S::Cell: Clone,
-    {
-        SquareGrid {
-            cells: ::std::iter::repeat(default).take(width * height).collect(),
-            diffs: Vec::new(),
-            width: width,
-            height: height,
-        }
-    }
-
-    /// Make a new grid directly from an initial iter.
-    pub fn new_iter<I>(width: usize, height: usize, iter: I) -> SquareGrid<S>
-    where
-        I: IntoIterator<Item = S::Cell>,
-    {
-        let cells: Vec<_> = iter.into_iter().take(width * height).collect();
-        // Assert that they provided enough cells. If they didn't the simulation would panic.
-        assert_eq!(
-            cells.len(),
-            width * height,
-            "gridsim::Grid::new_iter: not enough cells provided in iter"
-        );
-        SquareGrid {
-            cells: cells,
-            diffs: Vec::new(),
-            width: width,
-            height: height,
-        }
-    }
-
-    /// Make a grid by evaluating each centered signed coordinate to a cell with a closure.
-    pub fn new_coord_map<F>(width: usize, height: usize, mut coord_map: F) -> SquareGrid<S>
-    where
-        F: FnMut(isize, isize) -> S::Cell,
-    {
-        Self::new_iter(
-            width,
-            height,
-            (0..height)
-                .flat_map(|y| (0..width).map(move |x| (x, y)))
-                .map(move |(x, y)| {
-                    coord_map(
-                        x as isize - width as isize / 2,
-                        y as isize - height as isize / 2,
-                    )
-                }),
-        )
-    }
-
-    /// Make a grid using a collection of centered signed coordinates with associated cells.
-    pub fn new_coords<I>(width: usize, height: usize, coords: I) -> SquareGrid<S>
-    where
-        I: IntoIterator<Item = ((isize, isize), S::Cell)>,
-        S::Cell: Default,
-    {
-        use std::collections::HashMap;
-        let coords: &mut HashMap<(isize, isize), S::Cell> = &mut coords.into_iter().collect();
-        Self::new_coord_map(width, height, |x, y| {
-            coords.remove(&(x, y)).unwrap_or_default()
-        })
-    }
-
-    /// Make a grid using a collection of centered signed coordinates that indicate true cells.
-    pub fn new_true_coords<I>(width: usize, height: usize, coords: I) -> SquareGrid<S>
-    where
-        I: IntoIterator<Item = (isize, isize)>,
-        S: Sim<Cell = bool>,
-    {
-        Self::new_coords(width, height, coords.into_iter().map(|c| (c, true)))
-    }
-
-    /// Get a &Cell by wrapped index.
-    #[inline]
-    pub fn get_cell(&self, i: usize) -> &S::Cell {
-        &self.cells[i % self.size()]
-    }
-
-    /// Get the Grid's Cell slice.
-    #[inline]
-    pub fn get_cells(&self) -> &[S::Cell] {
-        &self.cells[..]
-    }
-
-    /// Get the Grid's Cell slice mutably.
-    #[inline]
-    pub fn get_cells_mut(&mut self) -> &mut [S::Cell] {
-        &mut self.cells[..]
-    }
-
-    /// Get the Grid's width.
-    #[inline]
-    pub fn get_width(&self) -> usize {
-        self.width
-    }
-
-    /// Get the Grid's height.
-    #[inline]
-    pub fn get_height(&self) -> usize {
-        self.height
-    }
-
-    /// Get the Grid's size.
-    #[inline]
-    pub fn size(&self) -> usize {
-        self.width * self.height
+    fn update(cell: &mut C, next: C, _: ()) {
+        *cell = next;
     }
 }
 

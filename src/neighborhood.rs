@@ -1,5 +1,8 @@
 pub trait Direction {
+    type Directions: Iterator<Item = Self>;
+
     fn inv(self) -> Self;
+    fn directions() -> Self::Directions;
 }
 
 pub trait Neighborhood<T> {
@@ -11,4 +14,8 @@ pub trait Neighborhood<T> {
     fn iter(self) -> Self::Iter;
     /// Iterate over all neighbor cells with their directions.
     fn dir_iter(self) -> Self::DirIter;
+}
+
+pub trait GetNeighbors<'a, Idx, Neighbors> {
+    fn get_neighbors(&'a self, index: Idx) -> Neighbors;
 }

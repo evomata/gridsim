@@ -2,6 +2,7 @@ use std::iter::{once, Chain, Once};
 use std::ops::Index;
 use {Rule, Sim, SquareGrid};
 
+use super::GetNeighbors;
 use rayon::prelude::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIterator)]
@@ -17,6 +18,8 @@ pub enum Direction {
 }
 
 impl super::Direction for Direction {
+    type Directions = DirectionEnumIterator;
+
     fn inv(self) -> Direction {
         use self::Direction::*;
         match self {
@@ -29,6 +32,10 @@ impl super::Direction for Direction {
             Down => Up,
             DownRight => UpLeft,
         }
+    }
+
+    fn directions() -> Self::Directions {
+        Direction::iter_variants()
     }
 }
 
@@ -114,11 +121,11 @@ impl<T> super::Neighborhood<T> for Neighbors<T> {
     }
 }
 
-impl<'a, T> Neighbors<&'a T>
+impl<'a, T> Into<Neighbors<T>> for Neighbors<&'a T>
 where
     T: Clone,
 {
-    pub fn cloned(self) -> Neighbors<T> {
+    fn into(self) -> Neighbors<T> {
         Neighbors {
             right: self.right.clone(),
             up_right: self.up_right.clone(),
@@ -155,79 +162,20 @@ where
     }
 }
 
-impl<S, C> SquareGrid<S>
+impl<'a, C, S> GetNeighbors<'a, usize, Neighbors<&'a C>> for SquareGrid<S>
 where
-    S: Sim<Neighbors = Neighbors<C>, Cell = C>,
+    S: Sim<Cell = C>,
 {
-    fn from_grid_coord(&self, i: usize) -> Neighbors<C> {
+    fn get_neighbors(&'a self, ix: usize) -> Neighbors<&'a C> {
         Neighbors {
-            up_left: self.get_cell(self.size() + i - 1 - self.width).clone(),
-            up: self.get_cell(self.size() + i - self.width).clone(),
-            up_right: self.get_cell(self.size() + i + 1 - self.width).clone(),
-            left: self.get_cell(self.size() + i - 1).clone(),
-            right: self.get_cell(self.size() + i + 1).clone(),
-            down_left: self.get_cell(self.size() + i - 1 + self.width).clone(),
-            down: self.get_cell(self.size() + i + self.width).clone(),
-            down_right: self.get_cell(self.size() + i + 1 + self.width).clone(),
+            up_left: self.get_cell(self.size() + ix - 1 - self.width),
+            up: self.get_cell(self.size() + ix - self.width),
+            up_right: self.get_cell(self.size() + ix + 1 - self.width),
+            left: self.get_cell(self.size() + ix - 1),
+            right: self.get_cell(self.size() + ix + 1),
+            down_left: self.get_cell(self.size() + ix - 1 + self.width),
+            down: self.get_cell(self.size() + ix + self.width),
+            down_right: self.get_cell(self.size() + ix + 1 + self.width),
         }
-    }
-
-    /// Run the Grid for one cycle and parallelize the simulation.
-    pub fn cycle(&mut self)
-    where
-        S::Cell: Sync + Send,
-        S::Diff: Sync + Send,
-        S::Move: Sync + Send,
-    {
-        self.step();
-        self.update();
-    }
-
-    fn step(&mut self)
-    where
-        S::Cell: Sync,
-        S::Diff: Sync + Send,
-    {
-        self.diffs = {
-            let cs = |i| &self.cells[i % self.size()];
-            (0..self.size())
-                .into_par_iter()
-                .map(|i| {
-                    [
-                        [
-                            cs(self.size() + i - 1 - self.width),
-                            cs(self.size() + i - self.width),
-                            cs(self.size() + i + 1 - self.width),
-                        ],
-                        [
-                            cs(self.size() + i - 1),
-                            cs(self.size() + i),
-                            cs(self.size() + i + 1),
-                        ],
-                        [
-                            cs(self.size() + i - 1 + self.width),
-                            cs(self.size() + i + self.width),
-                            cs(self.size() + i + 1 + self.width),
-                        ],
-                    ]
-                })
-                .map(S::step)
-                .collect()
-        };
-    }
-
-    fn update(&mut self)
-    where
-        S::Cell: Sync + Send,
-        S::Diff: Sync + Send,
-    {
-        let mut diffs = Default::default();
-        ::std::mem::swap(&mut diffs, &mut self.diffs);
-        self.cells[..]
-            .par_iter_mut()
-            .zip(diffs.into_par_iter())
-            .for_each(|(cell, diff)| {
-                S::update(cell, diff);
-            });
     }
 }
