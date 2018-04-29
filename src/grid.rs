@@ -1,16 +1,12 @@
-use {GetNeighbors, Sim, TakeDiff, TakeMoveDirection, TakeMoveNeighbors};
+use {GetNeighbors, Sim, TakeDiff, TakeMoveNeighbors};
 
 use rayon::iter::IndexedParallelIterator;
-use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
-use std::mem::transmute;
 use std::mem::transmute_copy;
 use std::mem::ManuallyDrop;
 
 /// Represents the state of the simulation.
-///
-/// This is not as efficient for Rule and is optimized for Sim.
 #[derive(Clone, Debug)]
 pub struct SquareGrid<S: Sim> {
     cells: Vec<S::Cell>,
@@ -19,8 +15,8 @@ pub struct SquareGrid<S: Sim> {
     height: usize,
 }
 
-impl<S: Sim> GetNeighbors<'static, usize, ()> for SquareGrid<S> {
-    fn get_neighbors(&self, _: usize) {}
+impl<S: Sim> TakeMoveNeighbors<usize, ()> for SquareGrid<S> {
+    unsafe fn take_move_neighbors(&self, _: usize) {}
 }
 
 impl<S, D> TakeDiff<usize, D> for SquareGrid<S>
@@ -182,45 +178,53 @@ impl<S: Sim> SquareGrid<S> {
     }
 }
 
-// impl<'a, S, C, D, M, N, MN> SquareGrid<S>
-// where
-//     S: Sim<Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN>,
-//     S::Cell: Sync + Send,
-//     S::Diff: Sync + Send,
-//     S::Move: Sync + Send,
-//     S::Neighbors: Sync + Send,
-//     S::MoveNeighbors: Sync + Send,
-//     Self: GetNeighbors<'a, usize, N>,
-// {
-//     /// Run the Grid for one cycle and parallelize the simulation.
-//     pub fn cycle(&'a mut self) {
-//         self.step();
-//         self.update();
-//     }
+impl<'a, S, C, D, M, N, MN> SquareGrid<S>
+where
+    S: Sim<Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN> + 'a,
+    S::Cell: Sync + Send,
+    S::Diff: Sync + Send,
+    S::Move: Sync + Send,
+    S::Neighbors: Sync + Send,
+    S::MoveNeighbors: Sync + Send,
+    Self: GetNeighbors<'a, usize, N>,
+    Self: TakeMoveNeighbors<usize, MN>,
+{
+    /// Run the Grid for one cycle and parallelize the simulation.
+    pub fn cycle(&mut self) {
+        self.step();
+        self.update();
+    }
 
-//     fn step(&'a mut self) {
-//         self.diffs = {
-//             let cs = |i| &self.cells[i % self.size()];
-//             (0..self.size())
-//                 .into_par_iter()
-//                 .map(|i| Sim::step(&self.cells[i % self.size()], self.get_neighbors(i)))
-//                 .map(ManuallyDrop::new)
-//                 .collect()
-//         };
-//     }
+    fn step(&mut self) {
+        self.diffs = self.make_diffs();
+    }
 
-//     fn update(&'a mut self) {
-//         self.cells[..]
-//             .par_iter()
-//             .enumerate()
-//             .for_each(|(ix, cell)| unsafe {
-//                 S::update(
-//                     transmute(cell),
-//                     self.take_diff(ix),
-//                     (self as &Self).take_move_neighbors(ix),
-//                 );
-//             });
-//         // This wont call any `drop()` because of the `ManuallyDrop`.
-//         self.diffs.clear();
-//     }
-// }
+    fn make_diffs(&self) -> Vec<ManuallyDrop<(S::Diff, S::MoveNeighbors)>> {
+        self.cells[..]
+            .par_iter()
+            .enumerate()
+            .map(|(ix, c)| self.single_step(ix, c))
+            .map(ManuallyDrop::new)
+            .collect()
+    }
+
+    fn single_step(&self, ix: usize, c: &C) -> (S::Diff, S::MoveNeighbors) {
+        let grid = unsafe { &*(self as *const Self) };
+        S::step(c, grid.get_neighbors(ix))
+    }
+
+    fn update(&mut self) {
+        self.cells[..]
+            .par_iter()
+            .enumerate()
+            .for_each(|(ix, cell)| unsafe {
+                S::update(
+                    &mut *(cell as *const C as *mut C),
+                    self.take_diff(ix),
+                    (self as &Self).take_move_neighbors(ix),
+                );
+            });
+        // This wont call any `drop()` because of the `ManuallyDrop`.
+        self.diffs.clear();
+    }
+}

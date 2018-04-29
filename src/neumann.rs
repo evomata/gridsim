@@ -170,6 +170,15 @@ where
     }
 }
 
+impl<'a, S> GetNeighbors<'static, usize, Neighbors<bool>> for SquareGrid<S>
+where
+    S: Sim<Cell = bool>,
+{
+    fn get_neighbors(&'a self, ix: usize) -> Neighbors<bool> {
+        Neighbors::new(|dir| *self.get_cell(self.delta_index(ix, dir.delta())))
+    }
+}
+
 impl<S, M> TakeMoveDirection<usize, Direction, M> for SquareGrid<S>
 where
     S: Sim<Move = M, MoveNeighbors = Neighbors<M>>,

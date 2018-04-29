@@ -68,7 +68,7 @@ pub trait TakeDiff<Idx, Diff> {
     unsafe fn take_diff(&self, Idx) -> Diff;
 }
 
-impl<'a, R, C: 'a, N> Sim for R
+impl<R, C, N> Sim for R
 where
     R: Rule<Cell = C, Neighbors = N>,
     C: Clone,
@@ -100,7 +100,7 @@ impl Rule for GOL {
     fn rule(cell: bool, neighbors: Self::Neighbors) -> bool {
         let n = neighbors.iter().filter(|&c| c).count();
         if cell {
-            n >= 3 && n <= 4
+            n >= 2 && n <= 3
         } else {
             n == 3
         }
@@ -113,25 +113,13 @@ mod tests {
 
     #[test]
     fn gol_blinker() {
-        let mut grid = Grid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (0, n)));
+        let mut grid = SquareGrid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (0, n)));
 
         grid.cycle();
 
         assert_eq!(
             grid.get_cells(),
-            Grid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (n, 0))).get_cells()
-        )
-    }
-
-    #[test]
-    fn gol_blinker_par() {
-        let mut grid = Grid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (0, n)));
-
-        grid.cycle_par();
-
-        assert_eq!(
-            grid.get_cells(),
-            Grid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (n, 0))).get_cells()
+            SquareGrid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (n, 0))).get_cells()
         )
     }
 }
