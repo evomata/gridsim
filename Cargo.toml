@@ -8,6 +8,5 @@ repository = "https://github.com/vadixidav/gridsim"
 version = "0.1.3"
 
 [dependencies]
-clippy = "*"
 rayon = "1.0.1"
 enum-iterator-derive = "0.1.1"

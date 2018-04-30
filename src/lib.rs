@@ -4,8 +4,6 @@
 //! rhombic dodecahedral honeycombs(in its multiple tight-pack layer patterns), square grids, cube grids,
 //! and even n-dimensional grids, but they are currently not yet implemented.
 
-#![feature(plugin)]
-#![plugin(clippy)]
 #![feature(test)]
 
 extern crate rayon;
