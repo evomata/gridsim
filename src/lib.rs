@@ -1,14 +1,8 @@
 //! Gridsim is a library intended to run grid-based simulations.
-//! The library in its current form is not what it is intended to be.
-//! Once [const generics](https://github.com/rust-lang/rust/issues/44580) are available in nightly, this library will
-//! be turned into a library which is generic across all grid simulations. This will include hex grid,
-//! rhombic dodecahedral honeycomb (in its multiple tight-pack layer patterns), square grid, cube grid,
-//! and even n-dimensional grids. It will also be generic over the neighbor distance including
-//! moore and von-neumann neighborhood. It should also eventually be given mechanisms to easier support
-//! running on clusters.
 //!
-//! In its current early state, it will be used for 2d square grids only. The structure will be relatively
-//! similar to the final form, but include none of the above features except for the simulation part.
+//! The new generics introduced in gridsim 0.2.0 make it possible to implement hex grids,
+//! rhombic dodecahedral honeycombs(in its multiple tight-pack layer patterns), square grids, cube grids,
+//! and even n-dimensional grids, but they are currently not yet implemented.
 
 #![feature(plugin)]
 #![plugin(clippy)]
@@ -55,10 +49,11 @@ pub trait Sim<'a> {
     /// Nighborhood of moving data
     type MoveNeighbors;
 
-    /// Performs one step of the simulation.
+    /// Performs one step of the simulation, creating diffs and movements that go out to neighbors.
     fn step(&Self::Cell, Self::Neighbors) -> (Self::Diff, Self::MoveNeighbors);
 
     /// Updates a cell with a diff and movements into this cell.
+    /// Note that these movements are the ones produced in each neighboring cell.
     fn update(&mut Self::Cell, Self::Diff, Self::MoveNeighbors);
 }
 

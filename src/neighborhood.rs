@@ -5,6 +5,7 @@ pub trait Direction: Sized {
     fn directions() -> Self::Directions;
 }
 
+/// A `Neighborhood` contains all of your neighbors, which are each in their own `Direction`.
 pub trait Neighborhood<T> {
     type Direction: Direction;
     type Iter: Iterator<Item = T>;
