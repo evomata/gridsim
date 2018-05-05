@@ -37,6 +37,8 @@ pub trait Rule<'a> {
 pub trait Sim<'a> {
     /// The type of cells on the grid
     type Cell;
+    /// An intermediary result used to permit asynchronous processing of the inputs.
+    type Async;
     /// Represents all information necessary to modify a cell in the previous grid to produce the version in the next
     type Diff;
     /// Data that moves between cells
@@ -47,8 +49,11 @@ pub trait Sim<'a> {
     /// Nighborhood of moving data
     type MoveNeighbors;
 
-    /// Performs one step of the simulation, creating diffs and movements that go out to neighbors.
-    fn step(&Self::Cell, Self::Neighbors) -> (Self::Diff, Self::MoveNeighbors);
+    /// Processes the cell and its neighbors to begin an asynchronous operation.
+    fn process(&Self::Cell, Self::Neighbors) -> Self::Async;
+
+    /// Resolves the asynchronous operation, creating diffs and movements that go out to neighbors.
+    fn step(Self::Async) -> (Self::Diff, Self::MoveNeighbors);
 
     /// Updates a cell with a diff and movements into this cell.
     /// Note that these movements are the ones produced in each neighboring cell.
@@ -68,6 +73,7 @@ where
     C: Clone,
 {
     type Cell = C;
+    type Async = C;
     type Diff = C;
     type Move = ();
 
@@ -75,8 +81,13 @@ where
     type MoveNeighbors = ();
 
     #[inline]
-    fn step(this: &C, neighbors: N) -> (C, ()) {
-        (Self::rule(this.clone(), neighbors), ())
+    fn process(this: &C, neighbors: N) -> C {
+        Self::rule(this.clone(), neighbors)
+    }
+
+    #[inline]
+    fn step(this: C) -> (C, ()) {
+        (this, ())
     }
 
     #[inline]

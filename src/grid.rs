@@ -1,15 +1,16 @@
 use {GetNeighbors, Sim, TakeDiff, TakeMoveNeighbors};
 
 use rayon::iter::IndexedParallelIterator;
+use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
-use std::mem::transmute_copy;
-use std::mem::ManuallyDrop;
+use std::mem::{swap, transmute_copy, ManuallyDrop};
 
 /// Represents the state of the simulation.
 #[derive(Clone, Debug)]
 pub struct SquareGrid<'a, S: Sim<'a>> {
     cells: Vec<S::Cell>,
+    asyncs: Vec<S::Async>,
     diffs: Vec<ManuallyDrop<(S::Diff, S::MoveNeighbors)>>,
     width: usize,
     height: usize,
@@ -41,6 +42,7 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
                 .take(width * height)
                 .map(|_| S::Cell::default())
                 .collect(),
+            asyncs: Vec::new(),
             diffs: Vec::new(),
             width,
             height,
@@ -54,6 +56,7 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
     {
         SquareGrid {
             cells: ::std::iter::repeat(default).take(width * height).collect(),
+            asyncs: Vec::new(),
             diffs: Vec::new(),
             width,
             height,
@@ -74,6 +77,7 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
         );
         SquareGrid {
             cells,
+            asyncs: Vec::new(),
             diffs: Vec::new(),
             width,
             height,
@@ -194,6 +198,7 @@ impl<'a, S, C, D, M, N, MN> SquareGrid<'a, S>
 where
     S: Sim<'a, Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN> + 'a,
     S::Cell: Sync + Send,
+    S::Async: Sync + Send,
     S::Diff: Sync + Send,
     S::Move: Sync + Send,
     S::Neighbors: Sync + Send,
@@ -203,24 +208,34 @@ where
 {
     /// Run the Grid for one cycle and parallelize the simulation.
     pub fn cycle(&mut self) {
+        self.process();
         self.step();
         self.update();
     }
 
-    fn step(&mut self) {
-        self.diffs = self.cells[..]
+    fn process(&mut self) {
+        self.asyncs = self.cells[..]
             .par_iter()
             .enumerate()
-            .map(|(ix, c)| self.single_step(ix, c))
+            .map(|(ix, c)| self.single_process(ix, c))
+            .collect();
+    }
+
+    fn step(&mut self) {
+        let mut asyncs = Vec::new();
+        swap(&mut asyncs, &mut self.asyncs);
+        self.diffs = asyncs
+            .into_par_iter()
+            .map(S::step)
             .map(ManuallyDrop::new)
             .collect();
     }
 
     #[inline]
-    fn single_step(&self, ix: usize, c: &C) -> (S::Diff, S::MoveNeighbors) {
+    fn single_process(&self, ix: usize, c: &C) -> S::Async {
         // TODO: Convey to the compiler this is okay without unsafe.
         let grid = unsafe { &*(self as *const Self) };
-        S::step(c, grid.get_neighbors(ix))
+        S::process(c, grid.get_neighbors(ix))
     }
 
     fn update(&mut self) {
