@@ -224,9 +224,10 @@ where
     fn step(&mut self) {
         let mut asyncs = Vec::new();
         swap(&mut asyncs, &mut self.asyncs);
-        self.diffs = asyncs
-            .into_par_iter()
-            .map(S::step)
+        self.diffs = self.cells
+            .par_iter()
+            .zip(asyncs.into_par_iter())
+            .map(|p| S::step(p.0, p.1))
             .map(ManuallyDrop::new)
             .collect();
     }

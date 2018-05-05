@@ -53,7 +53,7 @@ pub trait Sim<'a> {
     fn process(&Self::Cell, Self::Neighbors) -> Self::Async;
 
     /// Resolves the asynchronous operation, creating diffs and movements that go out to neighbors.
-    fn step(Self::Async) -> (Self::Diff, Self::MoveNeighbors);
+    fn step(&Self::Cell, Self::Async) -> (Self::Diff, Self::MoveNeighbors);
 
     /// Updates a cell with a diff and movements into this cell.
     /// Note that these movements are the ones produced in each neighboring cell.
@@ -86,7 +86,7 @@ where
     }
 
     #[inline]
-    fn step(this: C) -> (C, ()) {
+    fn step(_: &C, this: C) -> (C, ()) {
         (this, ())
     }
 
