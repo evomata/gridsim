@@ -10,3 +10,9 @@ version = "0.2.0"
 [dependencies]
 rayon = "1.0.1"
 enum-iterator-derive = "0.1.1"
+bincode = { version = "1.0.1", optional = true }
+serde = { version = "1.0.70", optional = true }
+
+[features]
+default = ["multinode"]
+multinode = ["bincode", "serde"]

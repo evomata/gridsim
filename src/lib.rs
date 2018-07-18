@@ -11,12 +11,16 @@ extern crate rayon;
 extern crate enum_iterator_derive;
 
 mod grid;
+#[cfg(feature = "multinode")]
+mod multigrid;
 mod neighborhood;
 
 pub mod moore;
 pub mod neumann;
 
 pub use grid::*;
+#[cfg(feature = "multinode")]
+pub use multigrid::*;
 pub use neighborhood::*;
 
 /// Defines a simulation for simple things like cellular automata.
