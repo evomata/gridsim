@@ -20,7 +20,7 @@ where
 {
     /// Run the Grid for one cycle and parallelize the simulation.
     ///
-    /// Make sure the reads and writes are only connected to other `VonNeumannMultiSquareGrid::cycle` running
+    /// Make sure the reads and writes are only connected to other `SquareGrid::cycle` running
     /// on any machine using THE EXACT SAME simulation or else there may be undefined behavior.
     pub unsafe fn cycle_multi<
         I0: Read,
