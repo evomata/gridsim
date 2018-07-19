@@ -206,9 +206,9 @@ impl<'a, S: Sim<'a>> VonNeumannMultiSquareGrid<'a, S> {
 impl<'a, S, C, D, M, N, MN> VonNeumannMultiSquareGrid<'a, S>
 where
     S: Sim<'a, Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN> + 'a,
-    S::Cell: Sync + Send + Serialize + Deserialize<'a>,
+    for<'dc> S::Cell: Sync + Send + Serialize + Deserialize<'dc>,
     S::Diff: Sync + Send,
-    S::Move: Sync + Send + Serialize + Deserialize<'a>,
+    for<'dm> S::Move: Sync + Send + Serialize + Deserialize<'dm>,
     S::Neighbors: Sync + Send,
     S::MoveNeighbors: Sync + Send,
     Self: GetNeighbors<'a, usize, N>,
@@ -315,13 +315,13 @@ where
         O7: Write,
     >(
         &mut self,
-        in_right: I0,
+        mut in_right: I0,
         in_up_right: I1,
-        in_up: I2,
+        mut in_up: I2,
         in_up_left: I3,
-        in_left: I4,
+        mut in_left: I4,
         in_down_left: I5,
-        in_down: I6,
+        mut in_down: I6,
         in_down_right: I7,
         mut out_right: O0,
         out_up_right: O1,
@@ -332,6 +332,7 @@ where
         mut out_down: O6,
         out_down_right: O7,
     ) -> bincode::Result<()> {
+        let size = self.size();
         // Send data first (so others can receive).
 
         // Start with the corners.
@@ -339,7 +340,7 @@ where
         serialize_into(out_up_right, &self.cells[self.width - 1])?;
         serialize_into(out_up_left, &self.cells[0])?;
         serialize_into(out_down_left, &self.cells[(self.height - 1) * self.width])?;
-        serialize_into(out_down_right, &self.cells[self.size() - 1])?;
+        serialize_into(out_down_right, &self.cells[size - 1])?;
 
         // Do the sides.
 
@@ -363,8 +364,30 @@ where
             serialize_into(&mut out_down, c)?;
         }
 
-        // TODO: Add receive code.
-        unimplemented!();
+        self.cells[self.width - 1] = deserialize_from(in_up_right)?;
+        self.cells[0] = deserialize_from(in_up_left)?;
+        self.cells[(self.height - 1) * self.width] = deserialize_from(in_down_left)?;
+        self.cells[size - 1] = deserialize_from(in_down_right)?;
+
+        // Right
+        for i in 0..self.height {
+            self.cells[(i + 1) * self.width - 1] = deserialize_from(&mut in_right)?;
+        }
+
+        // Up
+        for c in &mut self.cells[0..self.width] {
+            *c = deserialize_from(&mut in_up)?;
+        }
+
+        // Left
+        for i in 0..self.height {
+            self.cells[i * self.width] = deserialize_from(&mut in_left)?;
+        }
+
+        // Down
+        for c in &mut self.cells[(size - self.width)..size] {
+            *c = deserialize_from(&mut in_down)?;
+        }
 
         Ok(())
     }
