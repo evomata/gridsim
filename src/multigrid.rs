@@ -7,18 +7,16 @@ use self::bincode::{deserialize_from, serialize_into};
 use self::serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
-use neumann::*;
-
-impl<'a, S, C, D, M, N> SquareGrid<'a, S>
+impl<'a, S, C, D, M, N, MN> SquareGrid<'a, S>
 where
-    S: Sim<'a, Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = Neighbors<M>> + 'a,
+    S: Sim<'a, Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN> + 'a,
     for<'dc> S::Cell: Sync + Send + Serialize + Deserialize<'dc>,
     S::Diff: Sync + Send,
     S::Move: Sync + Send,
     S::Neighbors: Sync + Send,
     S::MoveNeighbors: Sync + Send,
     Self: GetNeighbors<'a, usize, N>,
-    Self: TakeMoveNeighbors<usize, Neighbors<M>>,
+    Self: TakeMoveNeighbors<usize, MN>,
 {
     /// Run the Grid for one cycle and parallelize the simulation.
     ///
