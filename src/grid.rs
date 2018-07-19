@@ -9,7 +9,7 @@ use std::mem::ManuallyDrop;
 /// Represents the state of the simulation.
 #[derive(Clone, Debug)]
 pub struct SquareGrid<'a, S: Sim<'a>> {
-    cells: Vec<S::Cell>,
+    pub(crate) cells: Vec<S::Cell>,
     diffs: Vec<ManuallyDrop<(S::Diff, S::MoveNeighbors)>>,
     width: usize,
     height: usize,
@@ -207,7 +207,7 @@ where
         self.update();
     }
 
-    fn step(&mut self) {
+    pub(crate) fn step(&mut self) {
         self.diffs = self.cells[..]
             .par_iter()
             .enumerate()
@@ -223,7 +223,7 @@ where
         S::step(c, grid.get_neighbors(ix))
     }
 
-    fn update(&mut self) {
+    pub(crate) fn update(&mut self) {
         self.cells[..]
             .par_iter()
             .enumerate()
