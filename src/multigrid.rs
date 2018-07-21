@@ -158,6 +158,7 @@ where
         for i in it {
             serialize_into(&mut out, &self.cells[i])?;
         }
+        out.flush()?;
         Ok(())
     }
 
