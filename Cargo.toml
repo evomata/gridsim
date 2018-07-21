@@ -1,5 +1,5 @@
 [package]
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Geordon Worley <vadixidav@gmail.com>"]
 description = "A library for running simulations on grids"
 documentation = "https://docs.rs/gridsim/"
