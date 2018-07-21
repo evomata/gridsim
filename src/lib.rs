@@ -19,8 +19,6 @@ pub mod moore;
 pub mod neumann;
 
 pub use grid::*;
-#[cfg(feature = "multinode")]
-pub use multigrid::*;
 pub use neighborhood::*;
 
 /// Defines a simulation for simple things like cellular automata.

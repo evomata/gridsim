@@ -143,8 +143,26 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
 
     /// Get a &Cell. Panics if out of bounds.
     #[inline]
+    pub fn get_cell_at(&self, x: usize, y: usize) -> &S::Cell {
+        &self.cells[y * self.height + x]
+    }
+
+    /// Get a &Cell. Panics if out of bounds.
+    #[inline]
     pub unsafe fn get_cell_unchecked(&self, i: usize) -> &S::Cell {
         self.cells.get_unchecked(i)
+    }
+
+    /// Get a &mut Cell. Panics if out of bounds.
+    #[inline]
+    pub fn get_cell_mut(&mut self, i: usize) -> &mut S::Cell {
+        &mut self.cells[i]
+    }
+
+    /// Get a &mut Cell. Panics if out of bounds.
+    #[inline]
+    pub fn get_cell_at_mut(&mut self, x: usize, y: usize) -> &mut S::Cell {
+        &mut self.cells[y * self.height + x]
     }
 
     /// This can only be called in the trait `TakeMoveDirection` when implmenting a new `Neighborhood`.

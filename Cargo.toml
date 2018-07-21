@@ -12,7 +12,8 @@ rayon = "1.0.1"
 enum-iterator-derive = "0.1.1"
 bincode = { version = "1.0.1", optional = true }
 serde = { version = "1.0.70", optional = true }
+itertools = { version = "0.7.8", optional = true }
 
 [features]
 default = ["multinode"]
-multinode = ["bincode", "serde"]
+multinode = ["bincode", "serde", "itertools"]

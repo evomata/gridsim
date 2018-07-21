@@ -1,16 +1,18 @@
 extern crate bincode;
+extern crate itertools;
 extern crate serde;
 
 use {GetNeighbors, Sim, SquareGrid, TakeMoveNeighbors};
 
 use self::bincode::{deserialize_from, serialize_into};
+use self::itertools::Itertools;
 use self::serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
 impl<'a, S, C, D, M, N, MN> SquareGrid<'a, S>
 where
     S: Sim<'a, Cell = C, Diff = D, Move = M, Neighbors = N, MoveNeighbors = MN> + 'a,
-    for<'dc> S::Cell: Sync + Send + Serialize + Deserialize<'dc>,
+    for<'dc> S::Cell: Sync + Send + Serialize + Deserialize<'dc> + 'a,
     S::Diff: Sync + Send,
     S::Move: Sync + Send,
     S::Neighbors: Sync + Send,
@@ -101,84 +103,133 @@ where
         O7: Write,
     >(
         &mut self,
-        mut in_right: I0,
+        in_right: I0,
         in_up_right: I1,
-        mut in_up: I2,
+        in_up: I2,
         in_up_left: I3,
-        mut in_left: I4,
+        in_left: I4,
         in_down_left: I5,
-        mut in_down: I6,
+        in_down: I6,
         in_down_right: I7,
-        mut out_right: O0,
+        out_right: O0,
         out_up_right: O1,
-        mut out_up: O2,
+        out_up: O2,
         out_up_left: O3,
-        mut out_left: O4,
+        out_left: O4,
         out_down_left: O5,
-        mut out_down: O6,
+        out_down: O6,
         out_down_right: O7,
     ) -> bincode::Result<()> {
-        let size = self.size();
-        let width = self.get_width();
-        let height = self.get_height();
-        // Send data first (so others can receive).
+        let right = self.right(2);
+        let top_right = self.top_right(2);
+        let top = self.top(2);
+        let top_left = self.top_left(2);
+        let left = self.left(2);
+        let bottom_left = self.bottom_left(2);
+        let bottom = self.bottom(2);
+        let bottom_right = self.bottom_right(2);
 
-        // Start with the corners.
+        self.serialize(out_right, right.clone())?;
+        self.serialize(out_up_right, top_right.clone())?;
+        self.serialize(out_up, top.clone())?;
+        self.serialize(out_up_left, top_left.clone())?;
+        self.serialize(out_left, left.clone())?;
+        self.serialize(out_down_left, bottom_left.clone())?;
+        self.serialize(out_down, bottom.clone())?;
+        self.serialize(out_down_right, bottom_right.clone())?;
 
-        serialize_into(out_up_right, &self.cells[width - 1])?;
-        serialize_into(out_up_left, &self.cells[0])?;
-        serialize_into(out_down_left, &self.cells[(height - 1) * width])?;
-        serialize_into(out_down_right, &self.cells[size - 1])?;
-
-        // Do the sides.
-
-        // Right
-        for c in (0..height).map(|i| &self.cells[(i + 1) * width - 1]) {
-            serialize_into(&mut out_right, c)?;
-        }
-
-        // Up
-        for c in &self.cells[0..width] {
-            serialize_into(&mut out_up, c)?;
-        }
-
-        // Left
-        for c in (0..height).map(|i| &self.cells[i * width]) {
-            serialize_into(&mut out_left, c)?;
-        }
-
-        // Down
-        for c in &self.cells[(self.size() - width)..self.size()] {
-            serialize_into(&mut out_down, c)?;
-        }
-
-        // Now receive data.
-
-        self.cells[width - 1] = deserialize_from(in_up_right)?;
-        self.cells[0] = deserialize_from(in_up_left)?;
-        self.cells[(height - 1) * width] = deserialize_from(in_down_left)?;
-        self.cells[size - 1] = deserialize_from(in_down_right)?;
-
-        // Right
-        for i in 0..height {
-            self.cells[(i + 1) * width - 1] = deserialize_from(&mut in_right)?;
-        }
-
-        // Up
-        for c in &mut self.cells[0..width] {
-            *c = deserialize_from(&mut in_up)?;
-        }
-
-        // Left
-        for i in 0..height {
-            self.cells[i * width] = deserialize_from(&mut in_left)?;
-        }
-
-        // Down
-        for c in &mut self.cells[(size - width)..size] {
-            *c = deserialize_from(&mut in_down)?;
-        }
+        self.deserialize(in_right, right)?;
+        self.deserialize(in_up_right, top_right)?;
+        self.deserialize(in_up, top)?;
+        self.deserialize(in_up_left, top_left)?;
+        self.deserialize(in_left, left)?;
+        self.deserialize(in_down_left, bottom_left)?;
+        self.deserialize(in_down, bottom)?;
+        self.deserialize(in_down_right, bottom_right)?;
 
         Ok(())
+    }
+
+    fn serialize(
+        &self,
+        mut out: impl Write,
+        it: impl Iterator<Item = usize>,
+    ) -> bincode::Result<()> {
+        for i in it {
+            serialize_into(&mut out, &self.cells[i])?;
+        }
+        Ok(())
+    }
+
+    fn deserialize(
+        &mut self,
+        mut input: impl Read,
+        it: impl Iterator<Item = usize>,
+    ) -> bincode::Result<()> {
+        for i in it {
+            self.cells[i] = deserialize_from(&mut input)?;
+        }
+        Ok(())
+    }
+
+    fn right(&self, thickness: usize) -> impl Iterator<Item = usize> + Clone {
+        let width = self.get_width();
+        let height = self.get_height();
+        (width - thickness..width)
+            .cartesian_product(thickness..height - thickness)
+            .map(move |(x, y)| y * height + x)
+    }
+
+    fn top_right(&self, thickness: usize) -> impl Iterator<Item = usize> + Clone {
+        let width = self.get_width();
+        let height = self.get_height();
+        (width - thickness..width)
+            .cartesian_product(0..thickness)
+            .map(move |(x, y)| y * height + x)
+    }
+
+    fn top(&self, thickness: usize) -> impl Iterator<Item = usize> + Clone {
+        let width = self.get_width();
+        let height = self.get_height();
+        (thickness..width - thickness)
+            .cartesian_product(0..thickness)
+            .map(move |(x, y)| y * height + x)
+    }
+
+    fn top_left(&self, thickness: usize) -> impl Iterator<Item = usize> + Clone {
+        let height = self.get_height();
+        (0..thickness)
+            .cartesian_product(0..thickness)
+            .map(move |(x, y)| y * height + x)
+    }
+
+    fn left(&self, thickness: usize) -> impl Iterator<Item = usize> + Clone {
+        let height = self.get_height();
+        (0..thickness)
+            .cartesian_product(thickness..height - thickness)
+            .map(move |(x, y)| y * height + x)
+    }
+
+    fn bottom_left(&self, thickness: usize) -> impl Iterator<Item = usize> + Clone {
+        let height = self.get_height();
+        (0..thickness)
+            .cartesian_product(height - thickness..height)
+            .map(move |(x, y)| y * height + x)
+    }
+
+    fn bottom(&self, thickness: usize) -> impl Iterator<Item = usize> + Clone {
+        let width = self.get_width();
+        let height = self.get_height();
+        (thickness..width - thickness)
+            .cartesian_product(height - thickness..height)
+            .map(move |(x, y)| y * height + x)
+    }
+
+    fn bottom_right(&self, thickness: usize) -> impl Iterator<Item = usize> + Clone {
+        let width = self.get_width();
+        let height = self.get_height();
+        (width - thickness..width)
+            .cartesian_product(height - thickness..height)
+            .map(move |(x, y)| y * height + x)
     }
 }
