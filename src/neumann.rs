@@ -101,6 +101,21 @@ pub struct Neighbors<T> {
     pub down_right: T,
 }
 
+impl<T> Neighbors<T> {
+    pub fn as_ref(&self) -> Neighbors<&T> {
+        Neighbors {
+            right: &self.right,
+            up_right: &self.up_right,
+            up: &self.up,
+            up_left: &self.up_left,
+            left: &self.left,
+            down_left: &self.down_left,
+            down: &self.down,
+            down_right: &self.down_right,
+        }
+    }
+}
+
 impl<T> Index<Direction> for Neighbors<T> {
     type Output = T;
     #[inline]
