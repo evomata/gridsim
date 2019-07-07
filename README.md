@@ -14,3 +14,6 @@
 [lo]: https://tokei.rs/b1/github/evomata/gridsim?category=code
 
 Grid simulation library for Rust
+
+Please see the crate [`gridsim_ui`](https://github.com/evomata/gridsim-ui)
+for examples and simplifying the display of grid simulations.

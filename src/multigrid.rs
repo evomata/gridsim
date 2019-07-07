@@ -2,7 +2,7 @@ extern crate bincode;
 extern crate itertools;
 extern crate serde;
 
-use {GetNeighbors, Sim, SquareGrid, TakeMoveNeighbors};
+use crate::{GetNeighbors, Sim, SquareGrid, TakeMoveNeighbors};
 
 use self::bincode::{deserialize_from, serialize_into};
 use self::itertools::Itertools;

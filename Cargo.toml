@@ -1,5 +1,6 @@
 [package]
 version = "0.2.4"
+edition = "2018"
 authors = ["Geordon Worley <vadixidav@gmail.com>"]
 description = "A library for running simulations on grids"
 documentation = "https://docs.rs/gridsim/"
@@ -13,6 +14,8 @@ enum-iterator-derive = "0.1.1"
 bincode = { version = "1.0.1", optional = true }
 serde = { version = "1.0.70", optional = true }
 itertools = { version = "0.7.8", optional = true }
+float-ord = "0.2.0"
+boolinator = "2.4.0"
 
 [features]
 default = ["multinode"]

@@ -1,13 +1,13 @@
+use crate::{Sim, SquareGrid, TakeMoveDirection, TakeMoveNeighbors, Direction};
 use std::iter::{once, Chain, Once};
-use std::ops::{Index, IndexMut};
-use {Sim, SquareGrid, TakeMoveDirection, TakeMoveNeighbors};
-
 use std::mem::transmute_copy;
+use std::ops::{Index, IndexMut};
+use NeumannDirection::*;
 
-use {GetNeighbors, Neighborhood};
+use crate::{GetNeighbors, Neighborhood};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIterator)]
-pub enum Direction {
+pub enum NeumannDirection {
     Right,
     UpRight,
     Up,
@@ -18,34 +18,18 @@ pub enum Direction {
     DownRight,
 }
 
-impl super::Direction for Direction {
-    type Directions = DirectionEnumIterator;
-
-    #[inline]
-    fn inv(self) -> Direction {
-        use self::Direction::*;
-        match self {
-            Right => Left,
-            UpRight => DownLeft,
-            Up => Down,
-            UpLeft => DownRight,
-            Left => Right,
-            DownLeft => UpRight,
-            Down => Up,
-            DownRight => UpLeft,
-        }
-    }
+impl Direction for NeumannDirection {
+    type Directions = NeumannDirectionEnumIterator;
 
     #[inline]
     fn directions() -> Self::Directions {
-        Direction::iter_variants()
+        NeumannDirection::iter_variants()
     }
 }
 
-impl Direction {
+impl NeumannDirection {
     #[inline]
-    fn delta(self) -> (isize, isize) {
-        use self::Direction::*;
+    pub fn delta(self) -> (isize, isize) {
         match self {
             Right => (1, 0),
             UpRight => (1, -1),
@@ -57,40 +41,41 @@ impl Direction {
             DownRight => (1, 1),
         }
     }
+}
 
-    #[inline]
-    pub fn left(self) -> Self {
-        use self::Direction::*;
-        match self {
-            Right => UpRight,
-            UpRight => Up,
-            Up => UpLeft,
-            UpLeft => Left,
-            Left => DownLeft,
-            DownLeft => Down,
-            Down => DownRight,
-            DownRight => Right,
+impl From<usize> for NeumannDirection {
+    fn from(n: usize) -> Self {
+        match n {
+            0 => Right,
+            1 => UpRight,
+            2 => Up,
+            3 => UpLeft,
+            4 => Left,
+            5 => DownLeft,
+            6 => Down,
+            7 => DownRight,
+            _ => panic!("invalid integer conversion to Direction"),
         }
     }
+}
 
-    #[inline]
-    pub fn right(self) -> Self {
-        use self::Direction::*;
+impl Into<usize> for NeumannDirection {
+    fn into(self) -> usize {
         match self {
-            Right => DownRight,
-            UpRight => Right,
-            Up => UpRight,
-            UpLeft => Up,
-            Left => UpLeft,
-            DownLeft => Left,
-            Down => DownLeft,
-            DownRight => Down,
+            Right => 0,
+            UpRight => 1,
+            Up => 2,
+            UpLeft => 3,
+            Left => 4,
+            DownLeft => 5,
+            Down => 6,
+            DownRight => 7,
         }
     }
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct Neighbors<T> {
+pub struct NeumannNeighbors<T> {
     pub right: T,
     pub up_right: T,
     pub up: T,
@@ -101,9 +86,9 @@ pub struct Neighbors<T> {
     pub down_right: T,
 }
 
-impl<T> Neighbors<T> {
-    pub fn as_ref(&self) -> Neighbors<&T> {
-        Neighbors {
+impl<T> NeumannNeighbors<T> {
+    pub fn as_ref(&self) -> NeumannNeighbors<&T> {
+        NeumannNeighbors {
             right: &self.right,
             up_right: &self.up_right,
             up: &self.up,
@@ -116,11 +101,10 @@ impl<T> Neighbors<T> {
     }
 }
 
-impl<T> Index<Direction> for Neighbors<T> {
+impl<T> Index<NeumannDirection> for NeumannNeighbors<T> {
     type Output = T;
     #[inline]
-    fn index(&self, ix: Direction) -> &T {
-        use self::Direction::*;
+    fn index(&self, ix: NeumannDirection) -> &T {
         match ix {
             Right => &self.right,
             UpRight => &self.up_right,
@@ -134,10 +118,9 @@ impl<T> Index<Direction> for Neighbors<T> {
     }
 }
 
-impl<T> IndexMut<Direction> for Neighbors<T> {
+impl<T> IndexMut<NeumannDirection> for NeumannNeighbors<T> {
     #[inline]
-    fn index_mut(&mut self, ix: Direction) -> &mut T {
-        use self::Direction::*;
+    fn index_mut(&mut self, ix: NeumannDirection) -> &mut T {
         match ix {
             Right => &mut self.right,
             UpRight => &mut self.up_right,
@@ -159,15 +142,14 @@ type NeighborhoodIter<T> = Chain<
     Once<T>,
 >;
 
-impl<T> Neighborhood<T> for Neighbors<T> {
-    type Direction = Direction;
+impl<T> Neighborhood<T> for NeumannNeighbors<T> {
+    type Direction = NeumannDirection;
     type Iter = NeighborhoodIter<T>;
-    type DirIter = NeighborhoodIter<(Direction, T)>;
+    type DirIter = NeighborhoodIter<(NeumannDirection, T)>;
 
     #[inline]
-    fn new<F: FnMut(Direction) -> T>(mut f: F) -> Neighbors<T> {
-        use self::Direction::*;
-        Neighbors {
+    fn new<F: FnMut(NeumannDirection) -> T>(mut f: F) -> NeumannNeighbors<T> {
+        NeumannNeighbors {
             right: f(Right),
             up_right: f(UpRight),
             up: f(Up),
@@ -193,7 +175,6 @@ impl<T> Neighborhood<T> for Neighbors<T> {
 
     #[inline]
     fn dir_iter(self) -> Self::DirIter {
-        use self::Direction::*;
         once((Right, self.right))
             .chain(once((UpRight, self.up_right)))
             .chain(once((Up, self.up)))
@@ -205,43 +186,42 @@ impl<T> Neighborhood<T> for Neighbors<T> {
     }
 }
 
-impl<'a, T> From<Neighbors<&'a T>> for Neighbors<T>
+impl<'a, T> From<NeumannNeighbors<&'a T>> for NeumannNeighbors<T>
 where
     T: Clone,
 {
     #[inline]
-    fn from(f: Neighbors<&'a T>) -> Self {
-        Neighbors::new(|dir| f[dir].clone())
+    fn from(f: NeumannNeighbors<&'a T>) -> Self {
+        NeumannNeighbors::new(|dir| f[dir].clone())
     }
 }
 
-impl<'a, C, S> GetNeighbors<'a, usize, Neighbors<&'a C>> for SquareGrid<'a, S>
+impl<'a, C, S> GetNeighbors<'a, usize, NeumannNeighbors<&'a C>> for SquareGrid<'a, S>
 where
     S: Sim<'a, Cell = C>,
 {
     #[inline]
-    fn get_neighbors(&'a self, ix: usize) -> Neighbors<&'a C> {
-        Neighbors::new(|dir| unsafe { self.get_cell_unchecked(self.delta_index(ix, dir.delta())) })
+    fn get_neighbors(&'a self, ix: usize) -> NeumannNeighbors<&'a C> {
+        NeumannNeighbors::new(|dir| unsafe { self.get_cell_unchecked(self.delta_index(ix, dir.delta())) })
     }
 }
 
-impl<'a, S, M> TakeMoveDirection<usize, Direction, M> for SquareGrid<'a, S>
+impl<'a, S, M> TakeMoveDirection<usize, NeumannDirection, M> for SquareGrid<'a, S>
 where
-    S: Sim<'a, Move = M, MoveNeighbors = Neighbors<M>>,
+    S: Sim<'a, Move = M, MoveNeighbors = NeumannNeighbors<M>>,
 {
     #[inline]
-    unsafe fn take_move_direction(&self, ix: usize, dir: Direction) -> M {
+    unsafe fn take_move_direction(&self, ix: usize, dir: NeumannDirection) -> M {
         transmute_copy(&self.get_move_neighbors(ix)[dir])
     }
 }
 
-impl<'a, S, M> TakeMoveNeighbors<usize, Neighbors<M>> for SquareGrid<'a, S>
+impl<'a, S, M> TakeMoveNeighbors<usize, NeumannNeighbors<M>> for SquareGrid<'a, S>
 where
-    S: Sim<'a, Move = M, MoveNeighbors = Neighbors<M>>,
+    S: Sim<'a, Move = M, MoveNeighbors = NeumannNeighbors<M>>,
 {
     #[inline]
-    unsafe fn take_move_neighbors(&self, ix: usize) -> Neighbors<M> {
-        use Direction;
-        Neighbors::new(|dir| self.take_move_direction(self.delta_index(ix, dir.delta()), dir.inv()))
+    unsafe fn take_move_neighbors(&self, ix: usize) -> NeumannNeighbors<M> {
+        NeumannNeighbors::new(|dir| self.take_move_direction(self.delta_index(ix, dir.delta()), dir.inv()))
     }
 }

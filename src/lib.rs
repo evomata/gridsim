@@ -29,7 +29,7 @@ pub trait Rule<'a> {
     type Neighbors;
 
     /// This defines a rule for how a cell and its neighbors transform into a new cell.
-    fn rule(Self::Cell, neighbors: Self::Neighbors) -> Self::Cell;
+    fn rule(cell: Self::Cell, neighbors: Self::Neighbors) -> Self::Cell;
 }
 
 /// Defines a simulation for complicated things that have too much state to abandon on the next cycle.
@@ -50,18 +50,18 @@ pub trait Sim<'a> {
     type MoveNeighbors;
 
     /// Performs one step of the simulation, creating diffs and movements that go out to neighbors.
-    fn step(&Self::Cell, Self::Neighbors) -> (Self::Diff, Self::MoveNeighbors);
+    fn step(cell: &Self::Cell, neighbors: Self::Neighbors) -> (Self::Diff, Self::MoveNeighbors);
 
     /// Updates a cell with a diff and movements into this cell.
     /// Note that these movements are the ones produced in each neighboring cell.
-    fn update(&mut Self::Cell, Self::Diff, Self::MoveNeighbors);
+    fn update(cell: &mut Self::Cell, diffs: Self::Diff, move_neighbors: Self::MoveNeighbors);
 }
 
 pub trait TakeDiff<Idx, Diff> {
     /// This should be called exactly once for every index, making it unsafe.
     ///
     /// This is marked unsafe to ensure people read the documentation due to the above requirement.
-    unsafe fn take_diff(&self, Idx) -> Diff;
+    unsafe fn take_diff(&self, ix: Idx) -> Diff;
 }
 
 impl<'a, R, C, N> Sim<'a> for R
@@ -93,7 +93,7 @@ pub enum GOL {}
 
 impl<'a> Rule<'a> for GOL {
     type Cell = bool;
-    type Neighbors = neumann::Neighbors<&'a bool>;
+    type Neighbors = neumann::NeumannNeighbors<&'a bool>;
 
     #[inline]
     fn rule(cell: bool, neighbors: Self::Neighbors) -> bool {

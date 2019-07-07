@@ -1,4 +1,4 @@
-use {GetNeighbors, Sim, TakeDiff, TakeMoveNeighbors};
+use crate::{GetNeighbors, Sim, TakeDiff, TakeMoveNeighbors};
 
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
