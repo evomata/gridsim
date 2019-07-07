@@ -34,6 +34,11 @@ pub trait Direction: Sized + From<usize> + Into<usize> {
     }
 
     #[inline]
+    fn chooser_slice(sigmoids: &[f32]) -> Option<(Self, float_ord::FloatOrd<f32>)> {
+        Self::chooser(sigmoids.iter().cloned())
+    }
+
+    #[inline]
     fn turn_clockwise(self) -> Self {
         let mut n: usize = self.into();
         n += Self::total() - 1;
