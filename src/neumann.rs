@@ -1,4 +1,4 @@
-use crate::{Sim, SquareGrid, TakeMoveDirection, TakeMoveNeighbors, Direction};
+use crate::{Direction, Sim, SquareGrid, TakeMoveDirection, TakeMoveNeighbors};
 use std::iter::{once, Chain, Once};
 use std::mem::transmute_copy;
 use std::ops::{Index, IndexMut};
@@ -97,6 +97,40 @@ impl<T> NeumannNeighbors<T> {
             down_left: &self.down_left,
             down: &self.down,
             down_right: &self.down_right,
+        }
+    }
+}
+
+impl NeumannNeighbors<bool> {
+    /// Must provide an input iterator with length of the number of directions for the `Direction` impl
+    /// which contains sigmoid outputs in the range of (0.0, 1.0). For each direction this will instantiate
+    /// a bool that indicates whether that direction was above 0.5.
+    #[inline]
+    pub fn chooser(sigmoids: impl Iterator<Item = f32>) -> Self {
+        sigmoids.map(|value| value > 0.5).collect()
+    }
+
+    #[inline]
+    pub fn chooser_slice(sigmoids: &[f32]) -> Self {
+        Self::chooser(sigmoids.iter().cloned())
+    }
+}
+
+impl<T> std::iter::FromIterator<T> for NeumannNeighbors<T> {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        let mut iter = iter.into_iter();
+        Self {
+            right: iter.next().unwrap(),
+            up_right: iter.next().unwrap(),
+            up: iter.next().unwrap(),
+            up_left: iter.next().unwrap(),
+            left: iter.next().unwrap(),
+            down_left: iter.next().unwrap(),
+            down: iter.next().unwrap(),
+            down_right: iter.next().unwrap(),
         }
     }
 }
@@ -202,7 +236,9 @@ where
 {
     #[inline]
     fn get_neighbors(&'a self, ix: usize) -> NeumannNeighbors<&'a C> {
-        NeumannNeighbors::new(|dir| unsafe { self.get_cell_unchecked(self.delta_index(ix, dir.delta())) })
+        NeumannNeighbors::new(|dir| unsafe {
+            self.get_cell_unchecked(self.delta_index(ix, dir.delta()))
+        })
     }
 }
 
@@ -222,6 +258,8 @@ where
 {
     #[inline]
     unsafe fn take_move_neighbors(&self, ix: usize) -> NeumannNeighbors<M> {
-        NeumannNeighbors::new(|dir| self.take_move_direction(self.delta_index(ix, dir.delta()), dir.inv()))
+        NeumannNeighbors::new(|dir| {
+            self.take_move_direction(self.delta_index(ix, dir.delta()), dir.inv())
+        })
     }
 }

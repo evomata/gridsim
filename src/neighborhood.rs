@@ -51,7 +51,7 @@ pub trait Direction: Sized + From<usize> + Into<usize> {
 }
 
 /// A `Neighborhood` contains all of your neighbors, which are each in their own `Direction`.
-pub trait Neighborhood<T> {
+pub trait Neighborhood<T>: std::iter::FromIterator<T> {
     type Direction: Direction;
     type Iter: Iterator<Item = T>;
     type DirIter: Iterator<Item = (Self::Direction, T)>;
