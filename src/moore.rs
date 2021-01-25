@@ -1,4 +1,5 @@
 use crate::{Direction, Sim, SquareGrid, TakeMoveDirection, TakeMoveNeighbors};
+use enum_iterator::IntoEnumIterator;
 use std::iter::{once, Chain, Once};
 use std::mem::transmute_copy;
 use std::ops::{Index, IndexMut};
@@ -6,7 +7,7 @@ use MooreDirection::*;
 
 use crate::{GetNeighbors, Neighborhood};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIterator)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, IntoEnumIterator)]
 pub enum MooreDirection {
     Right,
     Up,
@@ -15,11 +16,11 @@ pub enum MooreDirection {
 }
 
 impl Direction for MooreDirection {
-    type Directions = MooreDirectionEnumIterator;
+    type Directions = <MooreDirection as IntoEnumIterator>::Iterator;
 
     #[inline]
     fn directions() -> Self::Directions {
-        MooreDirection::iter_variants()
+        MooreDirection::into_enum_iter()
     }
 }
 

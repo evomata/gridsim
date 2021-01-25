@@ -1,4 +1,5 @@
 use crate::{Direction, Sim, SquareGrid, TakeMoveDirection, TakeMoveNeighbors};
+use enum_iterator::IntoEnumIterator;
 use std::iter::{once, Chain, Once};
 use std::mem::transmute_copy;
 use std::ops::{Index, IndexMut};
@@ -6,7 +7,7 @@ use NeumannDirection::*;
 
 use crate::{GetNeighbors, Neighborhood};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIterator)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, IntoEnumIterator)]
 pub enum NeumannDirection {
     Right,
     UpRight,
@@ -19,11 +20,11 @@ pub enum NeumannDirection {
 }
 
 impl Direction for NeumannDirection {
-    type Directions = NeumannDirectionEnumIterator;
+    type Directions = <NeumannDirection as IntoEnumIterator>::Iterator;
 
     #[inline]
     fn directions() -> Self::Directions {
-        NeumannDirection::iter_variants()
+        NeumannDirection::into_enum_iter()
     }
 }
 

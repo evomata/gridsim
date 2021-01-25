@@ -7,8 +7,6 @@
 #![feature(test)]
 
 extern crate rayon;
-#[macro_use]
-extern crate enum_iterator_derive;
 
 mod grid;
 #[cfg(feature = "multinode")]
