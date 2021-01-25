@@ -1,12 +1,12 @@
 [package]
+name = "gridsim"
 version = "0.4.0"
 edition = "2018"
 authors = ["Geordon Worley <vadixidav@gmail.com>"]
 description = "A library for running simulations on grids"
 documentation = "https://docs.rs/gridsim/"
 license = "MIT"
-name = "gridsim"
-repository = "https://github.com/vadixidav/gridsim"
+repository = "https://github.com/evomata/gridsim"
 
 [dependencies]
 rayon = "1.5.0"
