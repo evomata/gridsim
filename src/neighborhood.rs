@@ -74,6 +74,8 @@ pub trait GetNeighbors<'a, Idx, Neighbors> {
 }
 
 pub trait TakeMoveDirection<Idx, Dir, Move> {
+    /// # Safety
+    ///
     /// This should be called exactly once for every index and direction.
     ///
     /// This is marked unsafe to ensure people read the documentation due to the above requirement.
@@ -81,6 +83,8 @@ pub trait TakeMoveDirection<Idx, Dir, Move> {
 }
 
 pub trait TakeMoveNeighbors<Idx, MoveNeighbors> {
+    /// # Safety
+    ///
     /// This should be called exactly once for every index, making it unsafe.
     ///
     /// This is marked unsafe to ensure people read the documentation due to the above requirement.

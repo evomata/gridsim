@@ -58,6 +58,8 @@ pub trait Sim<'a> {
 }
 
 pub trait TakeDiff<Idx, Diff> {
+    /// # Safety
+    ///
     /// This should be called exactly once for every index, making it unsafe.
     ///
     /// This is marked unsafe to ensure people read the documentation due to the above requirement.
@@ -99,7 +101,7 @@ impl<'a> Rule<'a> for GOL {
     fn rule(cell: bool, neighbors: Self::Neighbors) -> bool {
         let n = neighbors.iter().filter(|&&c| c).count();
         if cell {
-            n >= 2 && n <= 3
+            (2..=3).contains(&n)
         } else {
             n == 3
         }
@@ -108,7 +110,6 @@ impl<'a> Rule<'a> for GOL {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
     use super::*;
 
     #[test]
@@ -118,21 +119,8 @@ mod tests {
         grid.cycle();
 
         assert_eq!(
-            grid.get_cells(),
-            SquareGrid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (n, 0))).get_cells()
+            grid.cells(),
+            SquareGrid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (n, 0))).cells()
         )
-    }
-
-    #[bench]
-    fn gol_r_pentomino(b: &mut test::Bencher) {
-        let mut grid = SquareGrid::<GOL>::new_true_coords(
-            256,
-            256,
-            vec![(0, 1), (1, 0), (1, 1), (1, 2), (2, 0)],
-        );
-        b.iter(|| {
-            grid.cycle();
-            *grid.get_cell(0)
-        });
     }
 }

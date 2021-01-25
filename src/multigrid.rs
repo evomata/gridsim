@@ -22,8 +22,11 @@ where
 {
     /// Run the Grid for one cycle and parallelize the simulation.
     ///
+    /// # Safety
+    ///
     /// Make sure the reads and writes are only connected to other `SquareGrid::cycle` running
     /// on any machine using THE EXACT SAME simulation or else there may be undefined behavior.
+    #[allow(clippy::too_many_arguments)]
     pub unsafe fn cycle_multi<
         I0: Read,
         I1: Read,
@@ -84,6 +87,7 @@ where
     }
 
     /// Synchronize cells with other grids.
+    #[allow(clippy::too_many_arguments)]
     fn sync_cells<
         I0: Read,
         I1: Read,

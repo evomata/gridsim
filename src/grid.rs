@@ -147,9 +147,13 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
         &self.cells[y * self.height + x]
     }
 
-    /// Get a &Cell. Panics if out of bounds.
+    /// Get a &Cell by vector index.
+    ///
+    /// # Safety
+    ///
+    /// Make sure that the index is in the range `..width * height`.
     #[inline]
-    pub unsafe fn get_cell_unchecked(&self, i: usize) -> &S::Cell {
+    pub(crate) unsafe fn get_cell_unchecked(&self, i: usize) -> &S::Cell {
         self.cells.get_unchecked(i)
     }
 
@@ -167,25 +171,25 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
 
     /// This can only be called in the trait `TakeMoveDirection` when implmenting a new `Neighborhood`.
     #[inline]
-    pub unsafe fn get_move_neighbors(&self, i: usize) -> &S::MoveNeighbors {
+    pub(crate) unsafe fn get_move_neighbors(&self, i: usize) -> &S::MoveNeighbors {
         &self.diffs.get_unchecked(i).1
     }
 
     /// This can only be called in the trait `TakeMoveDirection` when implmenting a new `Neighborhood`.
     #[inline]
-    pub unsafe fn get_diff(&self, i: usize) -> &S::Diff {
+    pub(crate) unsafe fn get_diff(&self, i: usize) -> &S::Diff {
         &self.diffs.get_unchecked(i).0
     }
 
     /// Get the Grid's Cell slice.
     #[inline]
-    pub fn get_cells(&self) -> &[S::Cell] {
+    pub fn cells(&self) -> &[S::Cell] {
         &self.cells[..]
     }
 
     /// Get the Grid's Cell slice mutably.
     #[inline]
-    pub fn get_cells_mut(&mut self) -> &mut [S::Cell] {
+    pub fn cells_mut(&mut self) -> &mut [S::Cell] {
         &mut self.cells[..]
     }
 
@@ -246,6 +250,7 @@ where
             .par_iter()
             .enumerate()
             .for_each(|(ix, cell)| unsafe {
+                #[allow(clippy::cast_ref_to_mut)]
                 S::update(
                     &mut *(cell as *const C as *mut C),
                     self.take_diff(ix),
