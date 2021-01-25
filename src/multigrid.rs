@@ -187,61 +187,61 @@ where
     }
 
     fn right(&self, thickness: usize, skip: usize) -> impl Iterator<Item = usize> + Clone {
-        let width = self.get_width();
-        let height = self.get_height();
+        let width = self.width();
+        let height = self.height();
         (width - thickness - skip..width - skip)
             .cartesian_product(thickness..height - thickness)
             .map(move |(x, y)| y * height + x)
     }
 
     fn top_right(&self, thickness: usize, skip: usize) -> impl Iterator<Item = usize> + Clone {
-        let width = self.get_width();
-        let height = self.get_height();
+        let width = self.width();
+        let height = self.height();
         (width - thickness - skip..width - skip)
             .cartesian_product(skip..thickness + skip)
             .map(move |(x, y)| y * height + x)
     }
 
     fn top(&self, thickness: usize, skip: usize) -> impl Iterator<Item = usize> + Clone {
-        let width = self.get_width();
-        let height = self.get_height();
+        let width = self.width();
+        let height = self.height();
         (thickness..width - thickness)
             .cartesian_product(skip..skip + thickness)
             .map(move |(x, y)| y * height + x)
     }
 
     fn top_left(&self, thickness: usize, skip: usize) -> impl Iterator<Item = usize> + Clone {
-        let height = self.get_height();
+        let height = self.height();
         (skip..skip + thickness)
             .cartesian_product(skip..skip + thickness)
             .map(move |(x, y)| y * height + x)
     }
 
     fn left(&self, thickness: usize, skip: usize) -> impl Iterator<Item = usize> + Clone {
-        let height = self.get_height();
+        let height = self.height();
         (skip..skip + thickness)
             .cartesian_product(thickness..height - thickness)
             .map(move |(x, y)| y * height + x)
     }
 
     fn bottom_left(&self, thickness: usize, skip: usize) -> impl Iterator<Item = usize> + Clone {
-        let height = self.get_height();
+        let height = self.height();
         (skip..skip + thickness)
             .cartesian_product(height - thickness - skip..height - skip)
             .map(move |(x, y)| y * height + x)
     }
 
     fn bottom(&self, thickness: usize, skip: usize) -> impl Iterator<Item = usize> + Clone {
-        let width = self.get_width();
-        let height = self.get_height();
+        let width = self.width();
+        let height = self.height();
         (thickness..width - thickness)
             .cartesian_product(height - thickness - skip..height - skip)
             .map(move |(x, y)| y * height + x)
     }
 
     fn bottom_right(&self, thickness: usize, skip: usize) -> impl Iterator<Item = usize> + Clone {
-        let width = self.get_width();
-        let height = self.get_height();
+        let width = self.width();
+        let height = self.height();
         (width - thickness - skip..width - skip)
             .cartesian_product(height - thickness - skip..height - skip)
             .map(move |(x, y)| y * height + x)

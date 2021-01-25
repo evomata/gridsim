@@ -129,10 +129,14 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
         // Technically this will result in a panic due to usize conversion in debug mode if used incorrectly.
         // In release mode if it goes too negative it will continue working only if the size of the grid is
         // a power of two due to the automatic correct modding behavior of negative wraparound.
-        let x = delta.0;
-        let y = delta.1;
+        let dx = delta.0;
+        let dy = delta.1;
+        let x = i % self.width;
+        let y = i / self.width;
 
-        ((i + self.size()) as isize + x + y * self.width as isize) as usize % self.size()
+        let x = (self.width as isize + dx + x as isize) as usize % self.width;
+        let y = (self.height as isize + dy + y as isize) as usize % self.height;
+        x + y * self.width
     }
 
     /// Get a &Cell. Panics if out of bounds.
@@ -195,13 +199,13 @@ impl<'a, S: Sim<'a>> SquareGrid<'a, S> {
 
     /// Get the Grid's width.
     #[inline]
-    pub fn get_width(&self) -> usize {
+    pub fn width(&self) -> usize {
         self.width
     }
 
     /// Get the Grid's height.
     #[inline]
-    pub fn get_height(&self) -> usize {
+    pub fn height(&self) -> usize {
         self.height
     }
 
