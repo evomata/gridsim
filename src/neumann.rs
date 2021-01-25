@@ -7,7 +7,7 @@ use NeumannDirection::*;
 
 use crate::{GetNeighbors, Neighborhood};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, IntoEnumIterator)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, IntoEnumIterator)]
 pub enum NeumannDirection {
     Right,
     UpRight,
