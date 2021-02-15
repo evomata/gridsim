@@ -1,5 +1,6 @@
 use crate::{GetNeighbors, Sim, TakeDiff, TakeMoveNeighbors};
 
+use ndarray::Array2;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
@@ -8,11 +9,13 @@ use std::mem::ManuallyDrop;
 
 /// Represents the state of the simulation.
 #[derive(Clone, Debug)]
-pub struct SquareGrid<'a, S: Sim<'a>> {
-    pub(crate) cells: Vec<S::Cell>,
-    diffs: Vec<ManuallyDrop<(S::Diff, S::MoveNeighbors)>>,
-    width: usize,
-    height: usize,
+pub struct SquareGrid<S>
+where
+    S: Sim,
+{
+    cells: Array2<S::Cell>,
+    diffs: Array2<Option<S::Diff>>,
+    flows: Array2<Option<S::Flow>>,
 }
 
 impl<'a, S: Sim<'a>> TakeMoveNeighbors<usize, ()> for SquareGrid<'a, S> {

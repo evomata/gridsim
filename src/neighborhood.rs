@@ -1,5 +1,3 @@
-use boolinator::Boolinator;
-
 pub trait Direction: Sized + From<usize> + Into<usize> {
     type Directions: Iterator<Item = Self>;
 

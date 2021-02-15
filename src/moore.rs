@@ -138,8 +138,8 @@ type NeighborhoodIter<T> = Chain<Chain<Chain<Once<T>, Once<T>>, Once<T>>, Once<T
 
 impl<T> Neighborhood<T> for MooreNeighbors<T> {
     type Direction = MooreDirection;
-    type Iter = NeighborhoodIter<T>;
-    type DirIter = NeighborhoodIter<(MooreDirection, T)>;
+    type Iter = impl Iterator<Item = T>;
+    type DirIter = impl Iterator<Item = (MooreDirection, T)>;
 
     #[inline]
     fn new<F: FnMut(MooreDirection) -> T>(mut f: F) -> MooreNeighbors<T> {

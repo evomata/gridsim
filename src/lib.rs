@@ -4,13 +4,9 @@
 //! rhombic dodecahedral honeycombs(in its multiple tight-pack layer patterns), square grids, cube grids,
 //! and even n-dimensional grids, but they are currently not yet implemented.
 
-#![feature(test)]
-
-extern crate rayon;
+#![feature(type_alias_impl_trait)]
 
 mod grid;
-#[cfg(feature = "multinode")]
-mod multigrid;
 mod neighborhood;
 
 pub mod moore;
@@ -34,25 +30,29 @@ pub trait Rule<'a> {
 ///
 /// This enforces a rule in that all new cells are only produced from old board state. This prevents the
 /// update order from breaking the simulation.
-pub trait Sim<'a> {
-    /// The type of cells on the grid
+pub trait Sim {
+    /// Cells on the grid
     type Cell;
-    /// Represents all information necessary to modify a cell in the previous grid to produce the version in the next
+    /// Result of the neighbor-observing computation
     type Diff;
-    /// Data that moves between cells
-    type Move;
 
-    /// Neighborhood of cells.
+    /// Neighborhood of cells
     type Neighbors;
     /// Nighborhood of moving data
-    type MoveNeighbors;
+    type Flow;
 
-    /// Performs one step of the simulation, creating diffs and movements that go out to neighbors.
-    fn step(cell: &Self::Cell, neighbors: Self::Neighbors) -> (Self::Diff, Self::MoveNeighbors);
+    /// At this stage, everything is immutable, and the diff can be computed that
+    /// describes what will change between simulation states.
+    fn compute(&self, cell: &Self::Cell, neighbors: Self::Neighbors) -> Self::Diff;
 
-    /// Updates a cell with a diff and movements into this cell.
-    /// Note that these movements are the ones produced in each neighboring cell.
-    fn update(cell: &mut Self::Cell, diffs: Self::Diff, move_neighbors: Self::MoveNeighbors);
+    /// At this stage, changes are made to the cell based on the diff and then
+    /// any owned state that needs to be moved to neighbors must be returned
+    /// as part of the flow.
+    fn egress(&self, cell: &mut Self::Cell, diff: Self::Diff) -> Self::Flow;
+
+    /// At this stage, the flow is received from all neighbors, allowing state
+    /// to be added to this cell.
+    fn ingress(&self, cell: &mut Self::Cell, flow: Self::Flow);
 }
 
 pub trait TakeDiff<Idx, Diff> {
