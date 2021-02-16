@@ -30,8 +30,8 @@ where
         SquareGrid {
             sim,
             cells,
-            diffs: Array2::default(cells.shape()),
-            flows: Array2::default(cells.shape()),
+            diffs: Array2::default(cells.dim()),
+            flows: Array2::default(cells.dim()),
         }
     }
 
@@ -40,8 +40,8 @@ where
     pub fn offset(&self, position: [usize; 2], offset: [isize; 2]) -> [usize; 2] {
         let dims = self.cells.dim();
         [
-            (position[0] + (offset[0] % dims.0) + dims.0) % dims.0,
-            (position[1] + (offset[1] % dims.1) + dims.1) % dims.1,
+            (position[0] + ((offset[0] % dims.0 as isize) + dims.0 as isize) as usize) % dims.0,
+            (position[1] + ((offset[1] % dims.1 as isize) + dims.1 as isize) as usize) % dims.1,
         ]
     }
 }

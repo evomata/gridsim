@@ -30,15 +30,15 @@ pub trait Direction: Sized + From<usize> + Into<usize> {
             .map(float_ord::FloatOrd)
             .enumerate()
             .max_by_key(|&(_, n)| n)
-            .and_then(|(ix, value)| (value.0 > 0.5).as_some((ix.into(), value.0)))
+            .and_then(|(ix, value)| (value.0 > 0.5).then(|| (ix.into(), value.0)))
     }
 
     /// Must provide an input slice with length of the number of directions for the `Direction` impl
     /// which contains sigmoid outputs in the range of (0.0, 1.0). This will choose a direction based on
     /// the highest sigmoid output. If none of the values are greater than 0.5, then it will choose no direction.
     #[inline]
-    fn chooser_slice(sigmoids: &[f32]) -> Option<(Self, float_ord::FloatOrd<f32>)> {
-        Self::chooser(sigmoids.iter().cloned())
+    fn chooser_slice(sigmoids: &[f32]) -> Option<(Self, f32)> {
+        Self::chooser(sigmoids.iter().copied())
     }
 
     #[inline]
