@@ -27,11 +27,12 @@ where
     where
         S::Cell: Default,
     {
+        let dims = cells.dim();
         SquareGrid {
             sim,
             cells,
-            diffs: Array2::default(cells.dim()),
-            flows: Array2::default(cells.dim()),
+            diffs: Array2::default(dims),
+            flows: Array2::default(dims),
         }
     }
 

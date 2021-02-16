@@ -1,4 +1,4 @@
-pub trait Direction: Sized + From<usize> + Into<usize> {
+pub trait Direction: Copy + From<usize> + Into<usize> {
     type Directions: Iterator<Item = Self>;
 
     /// An iterator over all directions. There must be an even number of directions and they
