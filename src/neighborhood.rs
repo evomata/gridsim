@@ -2,7 +2,7 @@ use crate::Direction;
 use std::ops::IndexMut;
 
 /// A `Neighborhood` contains all of your neighbors, which are each in their own `Direction`.
-pub trait Neighborhood<T>: IndexMut<Self::Direction> {
+pub trait Neighborhood<T>: IndexMut<Self::Direction, Output = T> {
     type Direction: Direction;
     type Iter: Iterator<Item = T>;
     type DirIter: Iterator<Item = (Self::Direction, T)>;
@@ -12,7 +12,7 @@ pub trait Neighborhood<T>: IndexMut<Self::Direction> {
     // Swaps the thing with direction `dir` in self with the
     // thing in the opposite-facing direction in `other`.
     fn swap_adjacent(&mut self, other: &mut Self, dir: Self::Direction) {
-        std::mem::swap(self[dir], other[dir.inv()]);
+        std::mem::swap(&mut self[dir], &mut other[dir.inv()]);
     }
 
     /// Iterate over all neighbor cells.
