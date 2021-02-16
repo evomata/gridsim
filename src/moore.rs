@@ -1,11 +1,10 @@
-use crate::{Direction, Sim, SquareGrid, TakeMoveDirection, TakeMoveNeighbors};
+use crate::Direction;
 use enum_iterator::IntoEnumIterator;
 use std::iter::{once, Chain, Once};
-use std::mem::transmute_copy;
 use std::ops::{Index, IndexMut};
 use MooreDirection::*;
 
-use crate::{GetNeighbors, Neighborhood};
+use crate::Neighborhood;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, IntoEnumIterator)]
 pub enum MooreDirection {
@@ -175,39 +174,5 @@ where
     #[inline]
     fn from(f: MooreNeighbors<&'a T>) -> Self {
         Self::new(|dir| f[dir].clone())
-    }
-}
-
-impl<'a, C, S> GetNeighbors<'a, usize, MooreNeighbors<&'a C>> for SquareGrid<'a, S>
-where
-    S: Sim<'a, Cell = C>,
-{
-    #[inline]
-    fn get_neighbors(&'a self, ix: usize) -> MooreNeighbors<&'a C> {
-        MooreNeighbors::new(|dir| unsafe {
-            self.get_cell_unchecked(self.delta_index(ix, dir.delta()))
-        })
-    }
-}
-
-impl<'a, S, M> TakeMoveDirection<usize, MooreDirection, M> for SquareGrid<'a, S>
-where
-    S: Sim<'a, Move = M, MoveNeighbors = MooreNeighbors<M>>,
-{
-    #[inline]
-    unsafe fn take_move_direction(&self, ix: usize, dir: MooreDirection) -> M {
-        transmute_copy(&self.get_move_neighbors(ix)[dir])
-    }
-}
-
-impl<'a, S, M> TakeMoveNeighbors<usize, MooreNeighbors<M>> for SquareGrid<'a, S>
-where
-    S: Sim<'a, Move = M, MoveNeighbors = MooreNeighbors<M>>,
-{
-    #[inline]
-    unsafe fn take_move_neighbors(&self, ix: usize) -> MooreNeighbors<M> {
-        MooreNeighbors::new(|dir| {
-            self.take_move_direction(self.delta_index(ix, dir.delta()), dir.inv())
-        })
     }
 }

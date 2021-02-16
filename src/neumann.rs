@@ -1,11 +1,8 @@
-use crate::{Direction, Sim, SquareGrid, TakeMoveDirection, TakeMoveNeighbors};
+use crate::{Direction, Neighborhood};
 use enum_iterator::IntoEnumIterator;
 use std::iter::{once, Chain, Once};
-use std::mem::transmute_copy;
 use std::ops::{Index, IndexMut};
 use NeumannDirection::*;
-
-use crate::{GetNeighbors, Neighborhood};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, IntoEnumIterator)]
 pub enum NeumannDirection {
@@ -228,39 +225,5 @@ where
     #[inline]
     fn from(f: NeumannNeighbors<&'a T>) -> Self {
         NeumannNeighbors::new(|dir| f[dir].clone())
-    }
-}
-
-impl<'a, C, S> GetNeighbors<'a, usize, NeumannNeighbors<&'a C>> for SquareGrid<'a, S>
-where
-    S: Sim<'a, Cell = C>,
-{
-    #[inline]
-    fn get_neighbors(&'a self, ix: usize) -> NeumannNeighbors<&'a C> {
-        NeumannNeighbors::new(|dir| unsafe {
-            self.get_cell_unchecked(self.delta_index(ix, dir.delta()))
-        })
-    }
-}
-
-impl<'a, S, M> TakeMoveDirection<usize, NeumannDirection, M> for SquareGrid<'a, S>
-where
-    S: Sim<'a, Move = M, MoveNeighbors = NeumannNeighbors<M>>,
-{
-    #[inline]
-    unsafe fn take_move_direction(&self, ix: usize, dir: NeumannDirection) -> M {
-        transmute_copy(&self.get_move_neighbors(ix)[dir])
-    }
-}
-
-impl<'a, S, M> TakeMoveNeighbors<usize, NeumannNeighbors<M>> for SquareGrid<'a, S>
-where
-    S: Sim<'a, Move = M, MoveNeighbors = NeumannNeighbors<M>>,
-{
-    #[inline]
-    unsafe fn take_move_neighbors(&self, ix: usize) -> NeumannNeighbors<M> {
-        NeumannNeighbors::new(|dir| {
-            self.take_move_direction(self.delta_index(ix, dir.delta()), dir.inv())
-        })
     }
 }

@@ -5,25 +5,29 @@
 //! and even n-dimensional grids, but they are currently not yet implemented.
 
 #![feature(type_alias_impl_trait)]
+#![feature(generic_associated_types)]
+#![allow(incomplete_features)]
 
+mod direction;
 mod grid;
 mod neighborhood;
 
 pub mod moore;
 pub mod neumann;
 
+pub use direction::*;
 pub use grid::*;
 pub use neighborhood::*;
 
 /// Defines a simulation for simple things like cellular automata.
-pub trait Rule<'a> {
+pub trait Rule {
     /// The type of cells on the grid
     type Cell;
     /// The neighborhood of the rule
-    type Neighbors;
+    type Neighbors<'a>;
 
     /// This defines a rule for how a cell and its neighbors transform into a new cell.
-    fn rule(cell: Self::Cell, neighbors: Self::Neighbors) -> Self::Cell;
+    fn rule<'a>(&self, cell: &Self::Cell, neighbors: Self::Neighbors<'a>) -> Self::Cell;
 }
 
 /// Defines a simulation for complicated things that have too much state to abandon on the next cycle.
@@ -37,13 +41,13 @@ pub trait Sim {
     type Diff;
 
     /// Neighborhood of cells
-    type Neighbors;
+    type Neighbors<'a>;
     /// Nighborhood of moving data
     type Flow;
 
     /// At this stage, everything is immutable, and the diff can be computed that
     /// describes what will change between simulation states.
-    fn compute(&self, cell: &Self::Cell, neighbors: Self::Neighbors) -> Self::Diff;
+    fn compute<'a>(&self, cell: &Self::Cell, neighbors: Self::Neighbors<'a>) -> Self::Diff;
 
     /// At this stage, changes are made to the cell based on the diff and then
     /// any owned state that needs to be moved to neighbors must be returned
@@ -55,48 +59,37 @@ pub trait Sim {
     fn ingress(&self, cell: &mut Self::Cell, flow: Self::Flow);
 }
 
-pub trait TakeDiff<Idx, Diff> {
-    /// # Safety
-    ///
-    /// This should be called exactly once for every index, making it unsafe.
-    ///
-    /// This is marked unsafe to ensure people read the documentation due to the above requirement.
-    unsafe fn take_diff(&self, ix: Idx) -> Diff;
-}
-
-impl<'a, R, C, N> Sim<'a> for R
+impl<R> Sim for R
 where
-    R: Rule<'a, Cell = C, Neighbors = N>,
-    C: Clone,
+    R: Rule,
 {
-    type Cell = C;
-    type Diff = C;
-    type Move = ();
+    type Cell = R::Cell;
+    type Diff = R::Cell;
 
-    type Neighbors = N;
-    type MoveNeighbors = ();
+    type Neighbors<'a> = R::Neighbors<'a>;
+    type Flow = ();
 
-    #[inline]
-    fn step(this: &C, neighbors: N) -> (C, ()) {
-        (Self::rule(this.clone(), neighbors), ())
+    fn compute<'a>(&self, cell: &Self::Cell, neighbors: Self::Neighbors<'a>) -> Self::Diff {
+        self.rule(cell, neighbors)
     }
 
-    #[inline]
-    fn update(cell: &mut C, next: C, _: ()) {
-        *cell = next;
+    fn egress(&self, cell: &mut Self::Cell, diff: Self::Diff) {
+        *cell = diff;
     }
+
+    fn ingress(&self, _: &mut Self::Cell, flow: ()) {}
 }
 
 /// Conway's Game of Life
 #[derive(Debug)]
-pub enum GOL {}
+pub struct Gol;
 
-impl<'a> Rule<'a> for GOL {
+impl Rule for Gol {
     type Cell = bool;
-    type Neighbors = neumann::NeumannNeighbors<&'a bool>;
+    type Neighbors<'a> = neumann::NeumannNeighbors<&'a bool>;
 
     #[inline]
-    fn rule(cell: bool, neighbors: Self::Neighbors) -> bool {
+    fn rule<'a>(&self, &cell: &bool, neighbors: neumann::NeumannNeighbors<&'a bool>) -> bool {
         let n = neighbors.iter().filter(|&&c| c).count();
         if cell {
             (2..=3).contains(&n)
@@ -108,17 +101,22 @@ impl<'a> Rule<'a> for GOL {
 
 #[cfg(test)]
 mod tests {
+    use ndarray::Array2;
+
     use super::*;
 
     #[test]
     fn gol_blinker() {
-        let mut grid = SquareGrid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (0, n)));
+        let mut grid = SquareGrid::new(
+            Gol,
+            Array2::from_shape_fn((5, 5), |(y, x)| y == 2 && x >= 1 && x <= 3),
+        );
 
-        grid.cycle();
+        // grid.cycle();
 
-        assert_eq!(
-            grid.cells(),
-            SquareGrid::<GOL>::new_true_coords(5, 5, (-1..2).map(|n| (n, 0))).cells()
-        )
+        // assert_eq!(
+        //     grid.cells(),
+        //     SquareGrid::<Gol>::new_true_coords(5, 5, (-1..2).map(|n| (n, 0))).cells()
+        // )
     }
 }
