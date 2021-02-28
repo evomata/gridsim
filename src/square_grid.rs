@@ -41,17 +41,39 @@ impl<S> SquareGrid<S>
 where
     S: Sim<Neumann> + Send + Sync,
     S::Cell: Send + Sync,
-    S::Diff: Send,
+    S::Diff: Send + Sync,
+    S::Flow: Send,
 {
     fn step(&mut self) {
         let diffs = self.compute_diffs();
+        let flows = self.perform_egress(diffs.view());
     }
 
     fn compute_diffs(&self) -> Array2<S::Diff> {
         let mut diffs = Array2::from_shape_simple_fn(self.cells.dim(), || self.sim.diff_padding());
-        par_azip!((dest in &mut diffs.slice_mut(s![1..-1, 1..-1]), cell in self.cells.windows((3, 3))) {
-            *dest = self.sim.compute(cell);
+        par_azip!((diff in diffs.slice_mut(s![1..-1, 1..-1]), cell in self.cells.windows((3, 3))) {
+            *diff = self.sim.compute(cell);
         });
         diffs
+    }
+
+    fn perform_egress(&mut self, diffs: ArrayView2<'_, S::Diff>) -> Array2<[S::Flow; 8]> {
+        let mut flows = Array2::from_shape_simple_fn(self.cells.dim(), || {
+            [
+                self.sim.flow_padding(),
+                self.sim.flow_padding(),
+                self.sim.flow_padding(),
+                self.sim.flow_padding(),
+                self.sim.flow_padding(),
+                self.sim.flow_padding(),
+                self.sim.flow_padding(),
+                self.sim.flow_padding(),
+            ]
+        });
+        let sim = &self.sim;
+        par_azip!((flow in flows.slice_mut(s![1..-1, 1..-1]), cell in self.cells.slice_mut(s![1..-1, 1..-1]), diffs in diffs.windows((3, 3))) {
+            *flow = sim.egress(cell, diffs);
+        });
+        flows
     }
 }
