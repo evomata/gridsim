@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         features:
-          - "--features rayon"
+          - "--features use-rayon"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
