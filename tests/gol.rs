@@ -1,5 +1,5 @@
 use gridsim::{Neumann, Sim, SquareGrid};
-use ndarray::ArrayView2;
+use ndarray::{Array2, ArrayView2};
 
 /// Conway's Game of Life
 #[derive(Debug)]
@@ -37,27 +37,20 @@ impl Sim<Neumann> for Gol {
     fn flow_padding(&self) -> Self::Flow {}
 }
 
-#[cfg(test)]
-mod tests {
-    use ndarray::Array2;
-
-    use super::*;
-
-    #[test]
-    fn gol_blinker() {
-        let mut grid = SquareGrid::new(
-            Gol,
-            Array2::from_shape_fn((5, 5), |(y, x)| y == 2 && x >= 1 && x <= 3),
-        );
-        grid.step_parallel();
-        assert_eq!(
-            grid.cells(),
-            Array2::from_shape_fn((5, 5), |(y, x)| x == 2 && y >= 1 && y <= 3)
-        );
-        grid.step_parallel();
-        assert_eq!(
-            grid.cells(),
-            Array2::from_shape_fn((5, 5), |(y, x)| y == 2 && x >= 1 && x <= 3)
-        );
-    }
+#[test]
+fn gol_blinker() {
+    let mut grid = SquareGrid::new(
+        Gol,
+        Array2::from_shape_fn((5, 5), |(y, x)| y == 2 && x >= 1 && x <= 3),
+    );
+    grid.step_parallel();
+    assert_eq!(
+        grid.cells(),
+        Array2::from_shape_fn((5, 5), |(y, x)| x == 2 && y >= 1 && y <= 3)
+    );
+    grid.step_parallel();
+    assert_eq!(
+        grid.cells(),
+        Array2::from_shape_fn((5, 5), |(y, x)| y == 2 && x >= 1 && x <= 3)
+    );
 }
