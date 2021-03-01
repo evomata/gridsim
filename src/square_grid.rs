@@ -48,7 +48,7 @@ where
     }
 }
 
-#[cfg(feature = "rayon")]
+#[cfg(feature = "use-rayon")]
 impl<S> SquareGrid<S>
 where
     S: Sim<Neumann> + Sync,
