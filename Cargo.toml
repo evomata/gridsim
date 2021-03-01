@@ -1,6 +1,6 @@
 [package]
 name = "gridsim"
-version = "0.5.1-alpha.0"
+version = "0.6.0"
 edition = "2018"
 authors = ["Geordon Worley <vadixidav@gmail.com>"]
 description = "A library for running simulations on grids"
