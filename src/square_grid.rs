@@ -1,11 +1,11 @@
 #![allow(clippy::reversed_empty_ranges)]
 
-use crate::{Neighborhood, Neumann, Sim};
-use ndarray::{azip, par_azip, s, Array2, ArrayView2, ArrayViewMut2, Axis, Zip};
-use rayon::iter::IndexedParallelIterator;
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
-use std::{cell::UnsafeCell, mem};
+use crate::{Neumann, Sim};
+use ndarray::{par_azip, s, Array2, ArrayView2, ArrayViewMut2};
+use std::{
+    cell::UnsafeCell,
+    mem::{self, ManuallyDrop},
+};
 
 /// Represents the state of the simulation.
 #[derive(Clone, Debug)]
@@ -40,14 +40,15 @@ where
 
 impl<S> SquareGrid<S>
 where
-    S: Sim<Neumann> + Send + Sync,
+    S: Sim<Neumann> + Sync,
     S::Cell: Send + Sync,
     S::Diff: Send + Sync,
-    S::Flow: Send + Sync,
+    S::Flow: Send,
 {
-    fn step(&mut self) {
+    pub fn step(&mut self) {
         let diffs = self.compute_diffs();
         let flows = self.perform_egress(diffs.view());
+        self.perform_ingress(flows);
     }
 
     fn compute_diffs(&self) -> Array2<S::Diff> {
@@ -61,9 +62,9 @@ where
     fn perform_egress(
         &mut self,
         diffs: ArrayView2<'_, S::Diff>,
-    ) -> Array2<UnsafeCell<[S::Flow; 8]>> {
+    ) -> Array2<ManuallyDrop<UnsafeCell<[S::Flow; 8]>>> {
         let mut flows = Array2::from_shape_simple_fn(self.cells.dim(), || {
-            UnsafeCell::new([
+            ManuallyDrop::new(UnsafeCell::new([
                 self.sim.flow_padding(),
                 self.sim.flow_padding(),
                 self.sim.flow_padding(),
@@ -72,14 +73,14 @@ where
                 self.sim.flow_padding(),
                 self.sim.flow_padding(),
                 self.sim.flow_padding(),
-            ])
+            ]))
         });
         let sim = &self.sim;
-        par_azip!((flow in flows.slice_mut(s![2..-2, 2..-2]), cell in self.cells.slice_mut(s![1..-1, 1..-1]), diffs in diffs.windows((3, 3))) {
+        par_azip!((flow in flows.slice_mut(s![1..-1, 1..-1]), cell in self.cells.slice_mut(s![1..-1, 1..-1]), diffs in diffs.windows((3, 3))) {
             *flow.get_mut() = sim.egress(cell, diffs);
         });
 
-        unsafe fn exchange_chunk<T>(chunk: ArrayViewMut2<'_, UnsafeCell<[T; 8]>>) {
+        unsafe fn exchange_chunk<T>(chunk: ArrayViewMut2<'_, ManuallyDrop<UnsafeCell<[T; 8]>>>) {
             let top_left = &mut *chunk[(0, 0)].get();
             let top_right = &mut *chunk[(0, 1)].get();
             let bottom_left = &mut *chunk[(1, 0)].get();
@@ -108,5 +109,22 @@ where
         }
 
         flows
+    }
+
+    fn perform_ingress(&mut self, mut flows: Array2<ManuallyDrop<UnsafeCell<[S::Flow; 8]>>>) {
+        let (h, w) = self.cells.dim();
+        let sim = &self.sim;
+        // At the end of this line, all of the manually drops MUST have been taken or dropped.
+        par_azip!((index (y, x), flow in &mut flows, cell in &mut self.cells) {
+            unsafe {
+                if (1..h-1).contains(&y) && (1..w-1).contains(&x) {
+                    // If its not part of the padding, we run the sim here.
+                    sim.ingress(cell, ManuallyDrop::take(flow).into_inner());
+                } else {
+                    // If this is part of the padding, we must manually drop.
+                    ManuallyDrop::drop(flow);
+                }
+            }
+        });
     }
 }
