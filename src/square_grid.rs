@@ -36,8 +36,19 @@ where
         });
         Self { sim, cells }
     }
+
+    /// Get view of cells on the grid.
+    pub fn cells(&self) -> ArrayView2<'_, S::Cell> {
+        self.cells.slice(s![1..-1, 1..-1])
+    }
+
+    /// Get mutable view of cells on the grid.
+    pub fn cells_mut(&mut self) -> ArrayViewMut2<'_, S::Cell> {
+        self.cells.slice_mut(s![1..-1, 1..-1])
+    }
 }
 
+#[cfg(feature = "rayon")]
 impl<S> SquareGrid<S>
 where
     S: Sim<Neumann> + Sync,
@@ -45,7 +56,7 @@ where
     S::Diff: Send + Sync,
     S::Flow: Send,
 {
-    pub fn step(&mut self) {
+    pub fn step_parallel(&mut self) {
         let diffs = self.compute_diffs();
         let flows = self.perform_egress(diffs.view());
         self.perform_ingress(flows);
