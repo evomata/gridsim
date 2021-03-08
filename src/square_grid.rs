@@ -6,6 +6,7 @@ use std::{
     cell::UnsafeCell,
     mem::{self, ManuallyDrop},
 };
+use itertools::Itertools;
 
 /// Represents the state of the simulation.
 #[derive(Clone, Debug)]
@@ -113,7 +114,7 @@ where
         // At this point we have only exchanged 1/4th of the total flows, but by sequentially
         // performing this same operation offset by (0, 0), (0, 1), (1, 0), and (1, 1)
         // we can actually exchange all flows in four simple parallel operations.
-        for (y, x) in (0..2).zip(0..2) {
+        for (y, x) in (0..2).cartesian_product(0..2) {
             par_azip!((chunk in flows.slice_mut(s![y.., x..]).exact_chunks_mut((2, 2))) {
                 unsafe { exchange_chunk(chunk); }
             });
