@@ -1,12 +1,12 @@
 #![allow(clippy::reversed_empty_ranges)]
 
 use crate::{Neumann, Sim};
+use itertools::Itertools;
 use ndarray::{par_azip, s, Array2, ArrayView2, ArrayViewMut2};
 use std::{
     cell::UnsafeCell,
     mem::{self, ManuallyDrop},
 };
-use itertools::Itertools;
 
 /// Represents the state of the simulation.
 #[derive(Clone, Debug)]
